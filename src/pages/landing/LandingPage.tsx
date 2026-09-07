@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Package, Navigation, ShieldCheck, Clock } from 'lucide-react'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { HERO_STATS } from '@/data/mockData'
+import { useStore } from '@/store'
 
 const DroneScene3D = lazy<React.FC<{ height?: number; className?: string }>>(() =>
   import('@/components/drone/DroneScene3D').then(m => ({ default: m.DroneScene3D }))
@@ -66,6 +67,7 @@ function FallbackDrone() {
 
 export function LandingPage() {
   const navigate = useNavigate()
+  const drone = useStore(s => s.drones.find(d => d.status === 'in_flight') ?? s.drones[0])
 
   return (
     <div className="min-h-screen bg-obsidian overflow-hidden relative">
@@ -169,10 +171,10 @@ export function LandingPage() {
             {/* Floating telemetry overlay */}
             <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 px-4">
               {[
-                { label: 'ALT', value: '82 m' },
-                { label: 'SPD', value: '46 km/h' },
-                { label: 'BAT', value: '78%' },
-                { label: 'TEMP', value: '5.8°C' },
+                { label: 'ALT',  value: `${drone?.altitude.toFixed(0) ?? '82'} m` },
+                { label: 'SPD',  value: `${drone?.speed.toFixed(0) ?? '46'} km/h` },
+                { label: 'BAT',  value: `${drone?.battery.toFixed(0) ?? '78'}%` },
+                { label: 'TEMP', value: `${drone?.temperature.toFixed(1) ?? '5.8'}°C` },
               ].map((t) => (
                 <div key={t.label} className="px-3 py-1.5 rounded bg-graphite/80 backdrop-blur-sm border border-white/10">
                   <div className="telemetry-label text-center">{t.label}</div>

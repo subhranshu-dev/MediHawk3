@@ -1,5 +1,7 @@
+import { useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/Toast'
+import { InitSequence } from '@/components/ui/InitSequence'
 import { useSimulation } from '@/hooks/useSimulation'
 import { useStore } from '@/store'
 
@@ -93,18 +95,27 @@ function AdminPortal() {
 }
 
 export default function App() {
+  const [initComplete, setInitComplete] = useState(false)
+
+  const handleInitComplete = useCallback(() => {
+    setInitComplete(true)
+  }, [])
+
   return (
     <BrowserRouter>
       <ToastProvider>
         <SimulationRunner />
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth/doctor" element={<DoctorLogin />} />
-          <Route path="/auth/admin" element={<AdminLogin />} />
-          <Route path="/doctor/*" element={<DoctorPortal />} />
-          <Route path="/admin/*" element={<AdminPortal />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <InitSequence onComplete={handleInitComplete} />
+        {initComplete && (
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth/doctor" element={<DoctorLogin />} />
+            <Route path="/auth/admin" element={<AdminLogin />} />
+            <Route path="/doctor/*" element={<DoctorPortal />} />
+            <Route path="/admin/*" element={<AdminPortal />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        )}
       </ToastProvider>
     </BrowserRouter>
   )
