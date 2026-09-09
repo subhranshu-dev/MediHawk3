@@ -21,7 +21,13 @@
       "Bash(grep -E '\\\\.\\(css|scss|ts|tsx\\)$')",
       "Bash(/home/subhranshu/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome --headless=new --no-sandbox --disable-gpu --screenshot=/tmp/v7_landing.png --window-size=1360,900 --hide-scrollbars --virtual-time-budget=4000 --run-all-compositor-stages-before-draw --disable-background-timer-throttling 'javascript:sessionStorage.setItem\\('\\\\''mh_init_v2'\\\\'','\\\\''1'\\\\''\\);location.href='\\\\''http://localhost:5173/'\\\\''')",
       "Bash(find /home/subhranshu -name \"playwright\" -type d 2>/dev/null | head -5 *)",
-      "Read(//home/subhranshu/**)"
+      "Read(//home/subhranshu/**)",
+      "Bash(grep -rn \"rgba\\\\|#[0-9a-fA-F]\\\\{3,8\\\\}\\\\|background\\\\|border.*color\\\\|boxShadow\\\\|color:\" /home/subhranshu/MediHawk3/src/pages/admin/ --include=\"*.tsx\")",
+      "Bash(grep -rn \"rgba\\\\|#[0-9a-fA-F]\\\\{3,8\\\\}\\\\b\" /home/subhranshu/MediHawk3/src/pages/admin/ --include=\"*.tsx\")",
+      "Bash(grep -E \"style=\\\\{|rgba\\\\\\(|#[0-9a-fA-F]{3,8}\")",
+      "Bash(npm run dev -- --port 5173 &> /tmp/vite.log & *)",
+      "Bash(/home/subhranshu/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome --headless=new --no-sandbox --disable-gpu --window-size=1400,900 --screenshot=/tmp/run_landing.png http://localhost:5174/)",
+      "Bash(echo \"landing: $?\")"
     ],
     "additionalDirectories": [
       "/tmp"

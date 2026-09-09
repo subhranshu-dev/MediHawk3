@@ -43,7 +43,7 @@ export function SystemStatusBar() {
   const { systemStatus, isDemo } = useStore()
 
   return (
-    <div className="flex items-center gap-4 px-4 py-2" style={{ borderTop: '1px solid rgba(23,25,28,0.09)', background: 'rgba(236,235,230,0.70)', backdropFilter: 'blur(8px)' }}>
+    <div className="flex items-center gap-4 px-4 py-2" style={{ borderTop: '1px solid rgba(40,62,75,0.22)', background: 'rgba(145,175,194,0.88)', backdropFilter: 'blur(12px)' }}>
       <ConnectionIndicator label="Backend" state={systemStatus.backend} compact />
       <ConnectionIndicator label="WebSocket" state={systemStatus.websocket} compact />
       <ConnectionIndicator label="4G" state={systemStatus.fourG as ConnState} compact />
@@ -51,7 +51,7 @@ export function SystemStatusBar() {
       <div className="flex-1" />
       {isDemo && (
         <span className="text-2xs font-bold tracking-widest uppercase px-2 py-0.5 rounded"
-          style={{ border: '1px solid rgba(224,107,16,0.28)', color: '#B85700', background: 'rgba(224,107,16,0.08)' }}>
+          style={{ border: '1px solid rgba(217,139,36,0.28)', color: '#B87010', background: 'rgba(217,139,36,0.08)' }}>
           SIMULATION
         </span>
       )}

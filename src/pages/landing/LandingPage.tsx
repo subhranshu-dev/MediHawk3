@@ -26,28 +26,28 @@ function FallbackDrone() {
         className="relative"
       >
         <svg width="200" height="140" viewBox="0 0 200 140" fill="none">
-          <rect x="70" y="55" width="60" height="20" rx="4" fill="#E8E6DF" stroke="rgba(23,25,28,0.10)" strokeWidth="1"/>
-          <line x1="70" y1="65" x2="30" y2="45" stroke="#C8C6BC" strokeWidth="3"/>
-          <line x1="130" y1="65" x2="170" y2="45" stroke="#C8C6BC" strokeWidth="3"/>
-          <line x1="70" y1="65" x2="30" y2="85" stroke="#C8C6BC" strokeWidth="3"/>
-          <line x1="130" y1="65" x2="170" y2="85" stroke="#C8C6BC" strokeWidth="3"/>
+          <rect x="70" y="55" width="60" height="20" rx="4" fill="#DCE8EC" stroke="rgba(23,35,43,0.10)" strokeWidth="1"/>
+          <line x1="70" y1="65" x2="30" y2="45" stroke="#B5C8D0" strokeWidth="3"/>
+          <line x1="130" y1="65" x2="170" y2="45" stroke="#B5C8D0" strokeWidth="3"/>
+          <line x1="70" y1="65" x2="30" y2="85" stroke="#B5C8D0" strokeWidth="3"/>
+          <line x1="130" y1="65" x2="170" y2="85" stroke="#B5C8D0" strokeWidth="3"/>
           {[[30,45],[170,45],[30,85],[170,85]].map(([cx,cy],i)=>(
             <g key={i}>
-              <circle cx={cx} cy={cy} r="18" fill="#E0DED7" stroke="rgba(23,25,28,0.08)" strokeWidth="1"/>
-              <ellipse cx={cx} cy={cy} rx="16" ry="3" fill="#C8C6BC" opacity="0.7"/>
+              <circle cx={cx} cy={cy} r="18" fill="#D5E1E6" stroke="rgba(23,35,43,0.08)" strokeWidth="1"/>
+              <ellipse cx={cx} cy={cy} rx="16" ry="3" fill="#B5C8D0" opacity="0.7"/>
               <circle cx={cx} cy={cy-18} r="3" fill={i<2?'#20C878':'#EF4444'} opacity="0.9">
                 <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.5s" repeatCount="indefinite"/>
               </circle>
             </g>
           ))}
-          <rect x="92" y="48" width="16" height="5" rx="1" fill="#D71920"/>
-          <rect x="96" y="44" width="8" height="13" rx="1" fill="#D71920"/>
-          <rect x="78" y="75" width="44" height="14" rx="3" fill="#FAFAF7" stroke="rgba(215,25,32,0.25)" strokeWidth="1"/>
-          <text x="100" y="85" textAnchor="middle" fill="#D71920" fontSize="8" fontWeight="bold">PAYLOAD</text>
+          <rect x="92" y="48" width="16" height="5" rx="1" fill="#C62832"/>
+          <rect x="96" y="44" width="8" height="13" rx="1" fill="#C62832"/>
+          <rect x="78" y="75" width="44" height="14" rx="3" fill="#F3F6F7" stroke="rgba(198,40,50,0.25)" strokeWidth="1"/>
+          <text x="100" y="85" textAnchor="middle" fill="#C62832" fontSize="8" fontWeight="bold">PAYLOAD</text>
           {[[78,89],[122,89]].map(([x,y],i)=>(
             <line key={i} x1={x} y1={y} x2={x} y2={y+12} stroke="#C8C6BC" strokeWidth="2"/>
           ))}
-          <path d="M10 120 Q100 100 190 120" stroke="#D71920" strokeWidth="1.5" strokeDasharray="6,4" fill="none" opacity="0.35"/>
+          <path d="M10 120 Q100 100 190 120" stroke="#C62832" strokeWidth="1.5" strokeDasharray="6,4" fill="none" opacity="0.35"/>
           <circle cx="15" cy="120" r="4" fill="#20C878" opacity="0.8"/>
           <circle cx="185" cy="120" r="4" fill="#E06B10" opacity="0.8"/>
         </svg>
@@ -159,13 +159,13 @@ export function LandingPage() {
                 <div key={t.label}
                   className="px-3 py-1.5 rounded"
                   style={{
-                    background: 'rgba(250,250,247,0.88)',
+                    background: 'rgba(238,244,248,0.88)',
                     backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(23,25,28,0.10)',
-                    boxShadow: '0 2px 8px rgba(23,25,28,0.08)',
+                    border: '1px solid rgba(23,35,43,0.12)',
+                    boxShadow: '0 2px 8px rgba(23,35,43,0.08)',
                   }}>
                   <div className="telemetry-label text-center">{t.label}</div>
-                  <div className="font-mono-data font-bold text-xs text-primary text-center" style={{ color: '#17191C' }}>{t.value}</div>
+                  <div className="font-mono-data font-bold text-xs text-primary text-center" style={{ color: '#17232B' }}>{t.value}</div>
                 </div>
               ))}
             </div>
@@ -180,16 +180,16 @@ export function LandingPage() {
             {/* Live indicator */}
             <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded"
               style={{
-                background: 'rgba(250,250,247,0.88)',
+                background: 'rgba(238,244,248,0.88)',
                 backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(26,158,95,0.25)',
-                boxShadow: '0 2px 8px rgba(23,25,28,0.07)',
+                border: '1px solid rgba(31,157,104,0.25)',
+                boxShadow: '0 2px 8px rgba(23,35,43,0.07)',
               }}>
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-med-green-light opacity-75 animate-ping" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-med-green" />
               </span>
-              <span className="text-2xs font-bold tracking-wide" style={{ color: '#1A7A4A' }}>SIMULATION ACTIVE</span>
+              <span className="text-2xs font-bold tracking-wide" style={{ color: '#1A7E55' }}>SIMULATION ACTIVE</span>
             </div>
           </motion.div>
         </div>
@@ -204,7 +204,7 @@ export function LandingPage() {
           {STATS.map((stat, i) => (
             <div key={i} className="panel p-4 flex items-center gap-4 panel-interactive">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(215,25,32,0.08)', border: '1px solid rgba(215,25,32,0.18)' }}>
+                style={{ background: 'rgba(198,40,50,0.08)', border: '1px solid rgba(198,40,50,0.18)' }}>
                 <stat.icon size={18} className="text-crimson" />
               </div>
               <div>
@@ -249,7 +249,7 @@ export function LandingPage() {
             {/* Hub */}
             <div className="flex flex-col items-center gap-2">
               <div className="w-12 h-12 rounded-lg flex items-center justify-center"
-                style={{ background: 'rgba(26,158,95,0.08)', border: '1px solid rgba(26,158,95,0.24)' }}>
+                style={{ background: 'rgba(31,157,104,0.08)', border: '1px solid rgba(31,157,104,0.24)' }}>
                 <ShieldCheck size={20} className="text-med-green" />
               </div>
               <span className="text-xs text-text-secondary text-center">MediHawk<br/>Central Hub</span>
@@ -258,19 +258,19 @@ export function LandingPage() {
             {/* Route line */}
             <div className="flex-1 mx-4 relative">
               <div className="h-px"
-                style={{ background: 'linear-gradient(to right, rgba(26,158,95,0.4), rgba(215,25,32,0.5), rgba(224,107,16,0.4))' }} />
+                style={{ background: 'linear-gradient(to right, rgba(31,157,104,0.4), rgba(198,40,50,0.5), rgba(217,139,36,0.4))' }} />
               <motion.div
                 animate={{ x: ['0%', '100%', '0%'] }}
                 transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
                 className="absolute -top-1.5 w-3 h-3 rounded-full bg-crimson border-2"
-                style={{ borderColor: '#E53535', boxShadow: '0 0 8px rgba(215,25,32,0.40)' }}
+                style={{ borderColor: '#D62839', boxShadow: '0 0 8px rgba(198,40,50,0.40)' }}
               />
             </div>
 
             {/* PHC */}
             <div className="flex flex-col items-center gap-2">
               <div className="w-12 h-12 rounded-lg flex items-center justify-center"
-                style={{ background: 'rgba(224,107,16,0.08)', border: '1px solid rgba(224,107,16,0.24)' }}>
+                style={{ background: 'rgba(217,139,36,0.08)', border: '1px solid rgba(217,139,36,0.24)' }}>
                 <Package size={20} className="text-amber" />
               </div>
               <span className="text-xs text-text-secondary text-center">PHC<br/>Chandaka</span>
@@ -285,7 +285,7 @@ export function LandingPage() {
         {/* Footer note */}
         <div className="mt-16 text-center text-2xs text-text-muted">
           <span className="rounded px-2 py-1 text-amber-dark font-semibold"
-            style={{ border: '1px solid rgba(224,107,16,0.22)', background: 'rgba(224,107,16,0.07)' }}>
+            style={{ border: '1px solid rgba(217,139,36,0.22)', background: 'rgba(217,139,36,0.07)' }}>
             DEMO / SIMULATION
           </span>
           <span className="ml-2">All data is simulated for demonstration purposes. No live drone operations.</span>

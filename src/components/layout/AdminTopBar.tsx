@@ -18,10 +18,10 @@ export function AdminTopBar() {
       className="fixed top-0 right-0 z-30"
       style={{
         left: 'var(--sidebar-width, 208px)',
-        background: 'rgba(250,250,247,0.92)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(23,25,28,0.09)',
-        boxShadow: '0 1px 8px rgba(23,25,28,0.06)',
+        background: 'rgba(165,192,208,0.92)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(40,62,75,0.22)',
+        boxShadow: '0 2px 14px rgba(28,44,56,0.14)',
       }}
     >
       <div className="flex items-center justify-between px-5 h-14">
@@ -30,7 +30,7 @@ export function AdminTopBar() {
           <span className="text-2xs text-text-muted tracking-widest uppercase font-semibold">Admin Command Center</span>
           {isDemo && (
             <span className="text-2xs px-2 py-0.5 rounded font-bold tracking-widest uppercase"
-              style={{ border: '1px solid rgba(224,107,16,0.28)', color: '#B85700', background: 'rgba(224,107,16,0.07)' }}>
+              style={{ border: '1px solid rgba(217,139,36,0.28)', color: '#B87010', background: 'rgba(217,139,36,0.07)' }}>
               DEMO
             </span>
           )}
@@ -41,7 +41,7 @@ export function AdminTopBar() {
           <button
             className="relative p-2 rounded transition-colors text-text-secondary hover:text-text-primary"
             style={{ transition: 'background 150ms ease' }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,25,28,0.06)'}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,35,43,0.06)'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
             onClick={() => navigate('/admin/alerts')}
           >
@@ -55,16 +55,16 @@ export function AdminTopBar() {
 
           <button
             className="p-2 rounded transition-colors text-text-secondary hover:text-text-primary"
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,25,28,0.06)'}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,35,43,0.06)'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
           >
             <Settings size={16} />
           </button>
 
           {/* User */}
-          <div className="flex items-center gap-2 ml-2 pl-2" style={{ borderLeft: '1px solid rgba(23,25,28,0.10)' }}>
+          <div className="flex items-center gap-2 ml-2 pl-2" style={{ borderLeft: '1px solid rgba(23,35,43,0.12)' }}>
             <div className="w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(215,25,32,0.10)', border: '1px solid rgba(215,25,32,0.24)' }}>
+              style={{ background: 'rgba(198,40,50,0.10)', border: '1px solid rgba(198,40,50,0.24)' }}>
               <User size={13} className="text-crimson" />
             </div>
             <div className="hidden md:flex flex-col leading-none">

@@ -15,69 +15,96 @@
   }
 
   body {
-    background-color: #F4F3EF;
-    color: #17191C;
+    /* Deep surgical blue-gray base — visible even without JS atmosphere */
+    background-color: #B2C4CF;
+    color: #17232B;
     min-height: 100vh;
     overflow-x: hidden;
   }
 
   :root {
-    /* MediHawk design tokens */
-    --mh-bg:              #F4F3EF;
-    --mh-surface:         #ECEBE6;
-    --mh-surface-mid:     #E6E4DD;
-    --mh-surface-elevated:#FAFAF7;
-    --mh-panel:           #EFEDE6;
-    --mh-ink:             #17191C;
-    --mh-text:            #17191C;
-    --mh-text-secondary:  #52566B;
-    --mh-text-muted:      #8E9298;
-    --mh-red:             #D71920;
-    --mh-red-deep:        #A90F17;
-    --mh-green:           #1A9E5F;
-    --mh-green-light:     #20C878;
-    --mh-orange:          #E06B10;
-    --mh-border:          rgba(23,25,28,0.09);
-    --mh-border-strong:   rgba(23,25,28,0.15);
-    --mh-shadow-sm:       0 1px 3px rgba(23,25,28,0.08), 0 1px 2px rgba(23,25,28,0.05);
-    --mh-shadow-md:       0 4px 12px rgba(23,25,28,0.10), 0 2px 4px rgba(23,25,28,0.06);
-    --mh-shadow-lg:       0 8px 24px rgba(23,25,28,0.12), 0 4px 8px rgba(23,25,28,0.07);
-    --mh-radius:          8px;
-    --mh-transition:      150ms ease;
+    /* ── MediHawk Theme #3: Surgical Blue-Gray + Crimson ─────── */
 
-    /* Legacy compatibility (dark-named → platinum values) */
-    --color-bg:             #F4F3EF;
-    --color-surface-1:      #ECEBE6;
-    --color-surface-2:      #E6E4DD;
-    --color-surface-3:      #DDDBD2;
-    --color-surface-4:      #D4D1C7;
-    --color-border:         rgba(23,25,28,0.09);
-    --color-border-strong:  rgba(23,25,28,0.14);
-    --color-text-primary:   #17191C;
-    --color-text-secondary: #52566B;
-    --color-text-muted:     #8E9298;
-    --color-crimson:        #D71920;
-    --color-green:          #1A9E5F;
-    --color-amber:          #E06B10;
+    /* Backgrounds — deeper mid-tone surgical palette */
+    --mh-bg:              #C8D8E2;
+    --mh-bg-secondary:    #BFCFD9;
+    --mh-surface:         #C4D4DD;
+    --mh-surface-mid:     #B8C9D4;
+    --mh-surface-elevated:#EDF2F5;
+    --mh-surface-soft:    #D8E5EC;
+    --mh-surface-strong:  #A8BFCB;
+    --mh-panel:           #D0DEEA;
+
+    /* Surgical blue — medical-aerospace secondary accent */
+    --mh-surgical-blue:        #486A7A;
+    --mh-surgical-blue-light:  #5E7F8E;
+    --mh-surgical-blue-muted:  #7594A1;
+
+    /* Graphite — aerospace depth */
+    --mh-graphite-deep:   #26343D;
+    --mh-graphite:        #34444D;
+    --mh-graphite-soft:   #3E5260;
+
+    /* Text */
+    --mh-ink:             #17232B;
+    --mh-text:            #17232B;
+    --mh-text-secondary:  #4A6070;
+    --mh-text-muted:      #6E8899;
+
+    /* Brand colors */
+    --mh-red:             #C62832;
+    --mh-red-deep:        #A91F2A;
+    --mh-green:           #1F9D68;
+    --mh-green-light:     #22B87A;
+    --mh-orange:          #D98B24;
+    --mh-info:            #55798A;
+
+    /* Borders */
+    --mh-border:          rgba(67,88,99,0.15);
+    --mh-border-strong:   rgba(67,88,99,0.24);
+    --mh-border-surgical: rgba(72,106,122,0.20);
+
+    /* Shadows — deeper aerospace depth on mid-tone background */
+    --mh-shadow-sm:  0 2px 10px rgba(26,42,54,0.14), 0 1px 4px rgba(26,42,54,0.08);
+    --mh-shadow-md:  0 8px 32px rgba(26,42,54,0.18), 0 3px 10px rgba(26,42,54,0.10);
+    --mh-shadow-lg:  0 20px 60px rgba(26,42,54,0.22), 0 8px 24px rgba(26,42,54,0.12);
+    --mh-panel-shadow: 0 6px 28px rgba(26,42,54,0.16), 0 2px 8px rgba(26,42,54,0.09), inset 0 1px 0 rgba(255,255,255,0.72);
+    --mh-panel-shadow-hover: 0 18px 56px rgba(26,42,54,0.22), 0 6px 18px rgba(26,42,54,0.13), inset 0 1px 0 rgba(255,255,255,0.82);
+    --mh-panel-shadow-elevated: 0 12px 44px rgba(26,42,54,0.18), 0 4px 14px rgba(26,42,54,0.10), inset 0 1px 0 rgba(255,255,255,0.78);
+
+    /* Misc */
+    --mh-radius:     8px;
+    --mh-transition: 150ms ease;
+
+    /* Legacy compatibility */
+    --color-bg:             #C8D8E2;
+    --color-surface-1:      #C4D4DD;
+    --color-surface-2:      #B8C9D4;
+    --color-surface-3:      #A8BFCB;
+    --color-surface-4:      #98B0BE;
+    --color-border:         rgba(67,88,99,0.15);
+    --color-border-strong:  rgba(67,88,99,0.22);
+    --color-text-primary:   #17232B;
+    --color-text-secondary: #4A6070;
+    --color-text-muted:     #6E8899;
+    --color-crimson:        #C62832;
+    --color-green:          #1F9D68;
+    --color-amber:          #D98B24;
   }
 
   ::selection {
-    background: rgba(215, 25, 32, 0.18);
-    color: #17191C;
+    background: rgba(198, 40, 50, 0.18);
+    color: #17232B;
   }
 
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-  ::-webkit-scrollbar-track { background: #ECEBE6; }
+  ::-webkit-scrollbar       { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #A8BFCB; }
   ::-webkit-scrollbar-thumb {
-    background: #C8C6BE;
+    background: #7A9BAB;
     border-radius: 3px;
   }
-  ::-webkit-scrollbar-thumb:hover { background: #B0AEA6; }
+  ::-webkit-scrollbar-thumb:hover { background: #6488A0; }
 
-  /* Focus ring */
   :focus-visible {
     outline: 2px solid var(--mh-red);
     outline-offset: 2px;
@@ -90,152 +117,167 @@
     letter-spacing: 0.02em;
   }
 
-  /* Surface hierarchy */
+  /* ── Surface hierarchy ─────────────────────────────────────── */
   .surface-0 { background-color: var(--mh-bg); }
   .surface-1 { background-color: var(--mh-surface); }
   .surface-2 { background-color: var(--mh-surface-mid); }
   .surface-3 { background-color: var(--mh-panel); }
   .surface-4 { background-color: var(--mh-surface-elevated); }
 
-  /* Legacy surface aliases */
-  .bg-obsidian-compat   { background-color: var(--mh-bg); }
-  .bg-graphite-compat   { background-color: var(--mh-surface); }
+  /* Legacy aliases */
+  .bg-obsidian-compat { background-color: var(--mh-bg); }
+  .bg-graphite-compat { background-color: var(--mh-surface); }
 
-  /* Borders */
-  .border-subtle  { border-color: var(--mh-border); }
-  .border-moderate{ border-color: var(--mh-border-strong); }
+  /* ── Premium surgical panels ───────────────────────────────── */
+  .panel {
+    background: rgba(243,247,249,0.90);
+    border: 1px solid rgba(67,88,99,0.14);
+    border-radius: var(--mh-radius);
+    box-shadow: var(--mh-panel-shadow);
+  }
 
-  /* Text */
-  .text-primary    { color: var(--mh-text); }
-  .text-secondary  { color: var(--mh-text-secondary); }
-  .text-muted-custom{ color: var(--mh-text-muted); }
+  .panel-elevated {
+    background: rgba(248,251,252,0.95);
+    border: 1px solid rgba(67,88,99,0.12);
+    border-radius: var(--mh-radius);
+    box-shadow: var(--mh-panel-shadow-elevated);
+  }
 
-  /* Status badges — light-background versions */
+  .panel-interactive {
+    background: rgba(243,247,249,0.90);
+    border: 1px solid rgba(67,88,99,0.14);
+    border-radius: var(--mh-radius);
+    box-shadow: var(--mh-panel-shadow);
+    transition: box-shadow 240ms ease, border-color 240ms ease, transform 240ms ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel-interactive:hover {
+    box-shadow: var(--mh-panel-shadow-hover);
+    border-color: rgba(67,88,99,0.24);
+    transform: translateY(-2px);
+  }
+
+  /* Graphite dark panel — for use in dark sidebar context */
+  .panel-dark {
+    background: rgba(52,68,77,0.85);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--mh-radius);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.20);
+  }
+
+  /* ── Status badges ─────────────────────────────────────────── */
   .badge-safe {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold tracking-wide;
-    background: rgba(26,158,95,0.10);
-    color: #1A7A4A;
-    border: 1px solid rgba(26,158,95,0.28);
+    background: rgba(31,157,104,0.10);
+    color: #187A52;
+    border: 1px solid rgba(31,157,104,0.28);
   }
   .badge-warning {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold tracking-wide;
-    background: rgba(224,107,16,0.10);
-    color: #B85700;
-    border: 1px solid rgba(224,107,16,0.28);
+    background: rgba(217,139,36,0.10);
+    color: #B87010;
+    border: 1px solid rgba(217,139,36,0.28);
   }
   .badge-critical {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold tracking-wide;
-    background: rgba(215,25,32,0.10);
-    color: #A90F17;
-    border: 1px solid rgba(215,25,32,0.28);
+    background: rgba(198,40,50,0.10);
+    color: #A91F2A;
+    border: 1px solid rgba(198,40,50,0.28);
   }
   .badge-info {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold tracking-wide;
-    background: rgba(82,86,107,0.10);
-    color: #52566B;
-    border: 1px solid rgba(82,86,107,0.24);
+    background: rgba(72,106,122,0.10);
+    color: var(--mh-surgical-blue);
+    border: 1px solid rgba(72,106,122,0.24);
   }
   .badge-active {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold tracking-wide;
-    background: rgba(215,25,32,0.09);
-    color: #D71920;
-    border: 1px solid rgba(215,25,32,0.22);
+    background: rgba(198,40,50,0.09);
+    color: #C62832;
+    border: 1px solid rgba(198,40,50,0.22);
   }
 
-  /* Buttons */
+  /* ── Buttons ────────────────────────────────────────────────── */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded font-semibold text-sm tracking-wide transition-all;
-    transition-duration: 180ms;
-    background: #D71920;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded font-semibold text-sm tracking-wide;
+    transition: all 200ms ease;
+    background: linear-gradient(to bottom, #D62839, #C62832);
     color: #fff;
-    box-shadow: 0 1px 3px rgba(215,25,32,0.30), 0 1px 2px rgba(215,25,32,0.18);
+    box-shadow: 0 1px 3px rgba(198,40,50,0.30), 0 1px 2px rgba(198,40,50,0.18), inset 0 1px 0 rgba(255,255,255,0.12);
+    border: 1px solid rgba(169,31,42,0.30);
   }
   .btn-primary:hover {
-    background: #B91C1C;
-    box-shadow: 0 4px 14px rgba(215,25,32,0.32), 0 2px 4px rgba(215,25,32,0.18);
+    background: linear-gradient(to bottom, #C62832, #A91F2A);
+    box-shadow: 0 6px 18px rgba(198,40,50,0.36), 0 2px 6px rgba(198,40,50,0.20), inset 0 1px 0 rgba(255,255,255,0.12);
     transform: translateY(-1px);
   }
-  .btn-primary:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(215,25,32,0.25); }
+  .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(198,40,50,0.25);
+  }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded font-semibold text-sm tracking-wide;
-    transition: all 180ms ease;
-    background: rgba(23,25,28,0.06);
-    color: #17191C;
-    border: 1px solid rgba(23,25,28,0.12);
+    transition: all 200ms ease;
+    background: rgba(232,239,243,0.88);
+    color: #17232B;
+    border: 1px solid rgba(67,88,99,0.18);
+    box-shadow: 0 1px 4px rgba(45,65,75,0.06), inset 0 1px 0 rgba(255,255,255,0.70);
   }
   .btn-secondary:hover {
-    background: rgba(23,25,28,0.10);
-    border-color: rgba(23,25,28,0.18);
+    background: rgba(222,232,238,0.95);
+    border-color: rgba(67,88,99,0.28);
     transform: translateY(-1px);
-    box-shadow: var(--mh-shadow-sm);
+    box-shadow: 0 4px 12px rgba(45,65,75,0.09), inset 0 1px 0 rgba(255,255,255,0.72);
   }
   .btn-secondary:active { transform: translateY(0); }
 
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded font-semibold text-sm tracking-wide;
-    transition: all 180ms ease;
-    background: rgba(215,25,32,0.08);
-    color: #A90F17;
-    border: 1px solid rgba(215,25,32,0.30);
+    transition: all 200ms ease;
+    background: rgba(198,40,50,0.08);
+    color: #A91F2A;
+    border: 1px solid rgba(198,40,50,0.30);
   }
   .btn-danger:hover {
-    background: rgba(215,25,32,0.14);
-    box-shadow: 0 4px 14px rgba(215,25,32,0.14);
+    background: rgba(198,40,50,0.14);
+    box-shadow: 0 4px 14px rgba(198,40,50,0.16);
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded font-medium text-sm tracking-wide;
-    transition: all 150ms ease;
-    color: #52566B;
+    transition: all 160ms ease;
+    color: #4A6070;
   }
-  .btn-ghost:hover { color: #17191C; background: rgba(23,25,28,0.06); }
+  .btn-ghost:hover {
+    color: #17232B;
+    background: rgba(67,88,99,0.07);
+  }
 
   .btn-green {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded font-semibold text-sm tracking-wide;
-    transition: all 180ms ease;
-    background: #1A9E5F;
+    transition: all 200ms ease;
+    background: linear-gradient(to bottom, #22B87A, #1F9D68);
     color: #fff;
-    box-shadow: 0 1px 3px rgba(26,158,95,0.30);
+    border: 1px solid rgba(24,122,82,0.30);
+    box-shadow: 0 1px 3px rgba(31,157,104,0.30), inset 0 1px 0 rgba(255,255,255,0.12);
   }
   .btn-green:hover {
-    background: #158450;
-    box-shadow: 0 4px 14px rgba(26,158,95,0.30);
+    background: linear-gradient(to bottom, #1F9D68, #187A52);
+    box-shadow: 0 6px 18px rgba(31,157,104,0.32), inset 0 1px 0 rgba(255,255,255,0.12);
     transform: translateY(-1px);
   }
   .btn-green:active { transform: translateY(0); }
 
-  /* Panels */
-  .panel {
-    background: var(--mh-surface-elevated);
-    border: 1px solid var(--mh-border);
-    border-radius: var(--mh-radius);
-    box-shadow: var(--mh-shadow-sm);
-  }
-  .panel-elevated {
-    background: var(--mh-surface-elevated);
-    border: 1px solid var(--mh-border);
-    border-radius: var(--mh-radius);
-    box-shadow: var(--mh-shadow-md);
-  }
+  /* ── Borders / text utilities ──────────────────────────────── */
+  .border-subtle   { border-color: var(--mh-border); }
+  .border-moderate { border-color: var(--mh-border-strong); }
+  .text-primary    { color: var(--mh-text); }
+  .text-secondary  { color: var(--mh-text-secondary); }
+  .text-muted-custom { color: var(--mh-text-muted); }
 
-  /* Interactive panel hover */
-  .panel-interactive {
-    background: var(--mh-surface-elevated);
-    border: 1px solid var(--mh-border);
-    border-radius: var(--mh-radius);
-    box-shadow: var(--mh-shadow-sm);
-    transition: box-shadow 220ms ease, border-color 220ms ease, transform 220ms ease;
-    position: relative;
-    overflow: hidden;
-  }
-  .panel-interactive:hover {
-    box-shadow: var(--mh-shadow-md);
-    border-color: rgba(23,25,28,0.14);
-    transform: translateY(-1px);
-  }
-
-  /* Telemetry */
+  /* ── Telemetry ──────────────────────────────────────────────── */
   .telemetry-value {
     font-family: 'Space Mono', monospace;
     font-weight: 700;
@@ -246,99 +288,99 @@
     color: var(--mh-text-muted);
   }
 
-  /* Leaflet overrides — warm atmosphere */
+  /* ── Leaflet — surgical blue-gray map ──────────────────────── */
   .leaflet-container {
-    background: #EAE8E1 !important;
+    background: #8AAABB !important;
     font-family: 'Inter', sans-serif;
     border-radius: inherit;
   }
-  .leaflet-tile-pane { filter: brightness(1.06) saturate(0.55) sepia(0.08); }
+  /* Deeper surgical blue-gray tile treatment */
+  .leaflet-tile-pane { filter: brightness(0.84) saturate(0.58) hue-rotate(6deg); }
   .leaflet-control-zoom a {
-    background: #FAFAF7 !important;
-    color: #52566B !important;
-    border-color: rgba(23,25,28,0.12) !important;
+    background: rgba(200,220,232,0.95) !important;
+    color: #26343D !important;
+    border-color: rgba(40,62,75,0.22) !important;
   }
   .leaflet-control-attribution { display: none; }
 
-  /* Status dot — live green pulse */
-  .status-dot-live {
-    @apply relative inline-flex h-2 w-2;
-  }
+  /* ── Status dot ─────────────────────────────────────────────── */
+  .status-dot-live { @apply relative inline-flex h-2 w-2; }
   .status-dot-live::before {
     content: '';
     @apply absolute inline-flex h-full w-full rounded-full opacity-75;
-    background: #20C878;
+    background: #22B87A;
     animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
   .status-dot-live::after {
     content: '';
     @apply relative inline-flex rounded-full h-2 w-2;
-    background: #1A9E5F;
+    background: #1F9D68;
   }
 
-  /* MediHawk signal line */
+  /* ── MediHawk signal line ───────────────────────────────────── */
   .mh-signal-line {
     position: relative;
     height: 1px;
-    background: linear-gradient(to right, transparent, rgba(215,25,32,0.25), transparent);
+    background: linear-gradient(to right, transparent, rgba(198,40,50,0.22), transparent);
     overflow: hidden;
   }
   .mh-signal-line::after {
     content: '';
     position: absolute;
-    top: -1px;
-    left: -20%;
-    width: 20%;
-    height: 3px;
-    background: linear-gradient(to right, transparent, #D71920, transparent);
+    top: -1px; left: -20%;
+    width: 20%; height: 3px;
+    background: linear-gradient(to right, transparent, #C62832, transparent);
     animation: signal-travel 3.5s ease-in-out infinite;
     animation-delay: 1.2s;
   }
 
-  /* Operational pulse */
+  /* ── Operational pulse ─────────────────────────────────────── */
   .op-pulse {
     @apply relative inline-flex rounded-full;
     animation: op-pulse-ring 2.4s ease-out infinite;
   }
-  .op-pulse-safe   { background: #1A9E5F; box-shadow: 0 0 0 0 rgba(26,158,95,0.4); }
-  .op-pulse-active { background: #D71920; box-shadow: 0 0 0 0 rgba(215,25,32,0.4); }
-  .op-pulse-warn   { background: #E06B10; box-shadow: 0 0 0 0 rgba(224,107,16,0.4); }
-  .op-pulse-crit   { background: #A90F17; box-shadow: 0 0 0 0 rgba(169,15,23,0.5); animation-duration: 1.4s; }
+  .op-pulse-safe   { background: #1F9D68; box-shadow: 0 0 0 0 rgba(31,157,104,0.4); }
+  .op-pulse-active { background: #C62832; box-shadow: 0 0 0 0 rgba(198,40,50,0.4); }
+  .op-pulse-warn   { background: #D98B24; box-shadow: 0 0 0 0 rgba(217,139,36,0.4); }
+  .op-pulse-crit   { background: #A91F2A; box-shadow: 0 0 0 0 rgba(169,31,42,0.5); animation-duration: 1.4s; }
 
-  /* Input fields */
+  /* ── Input fields ───────────────────────────────────────────── */
   .mh-input {
     @apply w-full px-3 py-2.5 rounded text-sm outline-none transition-all;
-    background: #FAFAF7;
-    border: 1px solid rgba(23,25,28,0.12);
-    color: #17191C;
+    background: rgba(243,247,249,0.92);
+    border: 1px solid rgba(67,88,99,0.16);
+    color: #17232B;
+    box-shadow: inset 0 1px 3px rgba(45,65,75,0.04);
   }
   .mh-input:focus {
-    border-color: rgba(215,25,32,0.40);
-    box-shadow: 0 0 0 3px rgba(215,25,32,0.08);
+    border-color: rgba(198,40,50,0.42);
+    box-shadow: 0 0 0 3px rgba(198,40,50,0.09), inset 0 1px 3px rgba(45,65,75,0.04);
   }
-  .mh-input::placeholder { color: #8E9298; }
+  .mh-input::placeholder { color: #6E8899; }
 
-  /* Form inputs via bg-slate class override */
+  /* bg-slate form overrides */
   input.bg-slate, textarea.bg-slate {
-    background: #FAFAF7 !important;
-    border-color: rgba(23,25,28,0.12) !important;
-    color: #17191C !important;
+    background: rgba(243,247,249,0.92) !important;
+    border-color: rgba(67,88,99,0.16) !important;
+    color: #17232B !important;
   }
   input.bg-slate:focus, textarea.bg-slate:focus {
-    border-color: rgba(215,25,32,0.40) !important;
-    box-shadow: 0 0 0 3px rgba(215,25,32,0.08) !important;
+    border-color: rgba(198,40,50,0.42) !important;
+    box-shadow: 0 0 0 3px rgba(198,40,50,0.09) !important;
   }
-  input.bg-slate::placeholder { color: #8E9298 !important; }
+  input.bg-slate::placeholder { color: #6E8899 !important; }
 }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
   .animate-float { animation: float 6s ease-in-out infinite; }
-
-  /* NO grid — .border-grid now renders nothing */
   .border-grid { background-image: none; }
 
-  /* Cursor halo utility */
+  /* Surgical blue accent utilities */
+  .border-surgical { border-color: rgba(72,106,122,0.22) !important; }
+  .bg-surgical     { background-color: rgba(72,106,122,0.07) !important; }
+  .text-surgical   { color: #486A7A !important; }
+
   .cursor-halo {
     pointer-events: none;
     position: fixed;
@@ -348,101 +390,94 @@
   }
 }
 
-/* Keyframes */
+/* ── Keyframes ────────────────────────────────────────────────── */
 @keyframes float {
   0%, 100% { transform: translateY(0px) rotate(0deg); }
   50%       { transform: translateY(-8px) rotate(1deg); }
 }
-
 @keyframes signal-travel {
   0%   { left: -20%; opacity: 0; }
   10%  { opacity: 1; }
   90%  { opacity: 1; }
   100% { left: 110%; opacity: 0; }
 }
-
 @keyframes op-pulse-ring {
   0%   { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
   70%  { box-shadow: 0 0 0 6px transparent; opacity: 0.8; }
   100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
 }
-
 @keyframes atmo-drift {
   0%   { transform: translate(0%, 0%) scale(1); }
   33%  { transform: translate(3%, -2%) scale(1.04); }
   66%  { transform: translate(-2%, 3%) scale(0.97); }
   100% { transform: translate(0%, 0%) scale(1); }
 }
-
 @keyframes atmo-pulse {
   0%, 100% { opacity: 0.55; }
-  50%       { opacity: 0.80; }
+  50%       { opacity: 0.85; }
 }
-
 @keyframes crimson-breath {
   0%, 100% { opacity: 0.04; }
-  50%       { opacity: 0.07; }
+  50%       { opacity: 0.08; }
+}
+@keyframes surgical-shift {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%       { opacity: 0.80; transform: scale(1.06); }
+}
+@keyframes cursor-halo-in {
+  from { opacity: 0; transform: translate(-50%,-50%) scale(0.6); }
+  to   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
 }
 
-@keyframes cursor-halo-in  { from { opacity: 0; transform: translate(-50%,-50%) scale(0.6); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+/* ────────────────────────────────────────────────────────────────
+   GLOBAL OVERRIDE: white-opacity → ink equivalents on light bg
+   Canvas/Three.js elements use inline styles and are unaffected.
+   ──────────────────────────────────────────────────────────────── */
 
-/* ────────────────────────────────────────────────────────────────────
-   GLOBAL OVERRIDE: Convert white-opacity classes → ink-opacity
-   These Tailwind classes (border-white/X, bg-white/X, hover:bg-white/X)
-   were designed for dark backgrounds. On the platinum environment they
-   need to use dark ink instead of white.
-   Canvas / Three.js elements are unaffected (they use inline styles).
-   ──────────────────────────────────────────────────────────────────── */
+.border-white\/6  { border-color: rgba(67,88,99,0.09) !important; }
+.border-white\/8  { border-color: rgba(67,88,99,0.11) !important; }
+.border-white\/10 { border-color: rgba(67,88,99,0.13) !important; }
+.border-white\/15 { border-color: rgba(67,88,99,0.17) !important; }
+.border-white\/20 { border-color: rgba(67,88,99,0.22) !important; }
+.border-white\/30 { border-color: rgba(67,88,99,0.28) !important; }
 
-/* Borders */
-.border-white\/6  { border-color: rgba(23,25,28,0.08) !important; }
-.border-white\/8  { border-color: rgba(23,25,28,0.09) !important; }
-.border-white\/10 { border-color: rgba(23,25,28,0.12) !important; }
-.border-white\/15 { border-color: rgba(23,25,28,0.14) !important; }
-.border-white\/20 { border-color: rgba(23,25,28,0.18) !important; }
-.border-white\/30 { border-color: rgba(23,25,28,0.24) !important; }
+.bg-white\/3  { background-color: rgba(67,88,99,0.025) !important; }
+.bg-white\/5  { background-color: rgba(67,88,99,0.04) !important; }
+.bg-white\/8  { background-color: rgba(67,88,99,0.06) !important; }
+.bg-white\/10 { background-color: rgba(67,88,99,0.08) !important; }
+.bg-white\/12 { background-color: rgba(67,88,99,0.09) !important; }
+.bg-white\/15 { background-color: rgba(67,88,99,0.11) !important; }
 
-/* Backgrounds */
-.bg-white\/3  { background-color: rgba(23,25,28,0.025) !important; }
-.bg-white\/5  { background-color: rgba(23,25,28,0.04) !important; }
-.bg-white\/8  { background-color: rgba(23,25,28,0.06) !important; }
-.bg-white\/10 { background-color: rgba(23,25,28,0.07) !important; }
-.bg-white\/12 { background-color: rgba(23,25,28,0.08) !important; }
-.bg-white\/15 { background-color: rgba(23,25,28,0.10) !important; }
+/* bg-white/6 used for icon containers in admin pages */
+.bg-white\/6  { background-color: rgba(67,88,99,0.07) !important; }
 
-/* Hover states */
-.hover\:bg-white\/5:hover  { background-color: rgba(23,25,28,0.05) !important; }
-.hover\:bg-white\/8:hover  { background-color: rgba(23,25,28,0.06) !important; }
-.hover\:bg-white\/10:hover { background-color: rgba(23,25,28,0.07) !important; }
-.hover\:bg-white\/12:hover { background-color: rgba(23,25,28,0.08) !important; }
+.hover\:bg-white\/5:hover  { background-color: rgba(67,88,99,0.05) !important; }
+.hover\:bg-white\/8:hover  { background-color: rgba(67,88,99,0.07) !important; }
+.hover\:bg-white\/10:hover { background-color: rgba(67,88,99,0.09) !important; }
+.hover\:bg-white\/12:hover { background-color: rgba(67,88,99,0.10) !important; }
 
-/* Input fields using bg-slate */
-input.bg-slate,
-textarea.bg-slate,
-input[class*="bg-slate"],
-textarea[class*="bg-slate"] {
-  background-color: #FAFAF7 !important;
-  color: #17191C !important;
+/* Chart progress bar bg */
+.bg-white\/10 { background-color: rgba(67,88,99,0.10) !important; }
+
+input.bg-slate, textarea.bg-slate,
+input[class*="bg-slate"], textarea[class*="bg-slate"] {
+  background-color: rgba(243,247,249,0.92) !important;
+  color: #17232B !important;
 }
-input[class*="border-white"],
-textarea[class*="border-white"] {
-  border-color: rgba(23,25,28,0.12) !important;
+input[class*="border-white"], textarea[class*="border-white"] {
+  border-color: rgba(67,88,99,0.16) !important;
 }
-input[class*="border-white"]:focus,
-textarea[class*="border-white"]:focus {
-  border-color: rgba(215,25,32,0.40) !important;
-  box-shadow: 0 0 0 3px rgba(215,25,32,0.07) !important;
+input[class*="border-white"]:focus, textarea[class*="border-white"]:focus {
+  border-color: rgba(198,40,50,0.42) !important;
+  box-shadow: 0 0 0 3px rgba(198,40,50,0.09) !important;
 }
 input[class*="focus:border-white"]:focus {
-  border-color: rgba(23,25,28,0.20) !important;
+  border-color: rgba(67,88,99,0.24) !important;
 }
-input::placeholder,
-textarea::placeholder { color: #8E9298 !important; }
+input::placeholder, textarea::placeholder { color: #6E8899 !important; }
 
-/* React Three Fiber canvas */
 canvas { display: block; }
 
-/* Framer motion reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

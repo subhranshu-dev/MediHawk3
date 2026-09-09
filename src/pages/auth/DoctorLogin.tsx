@@ -29,7 +29,7 @@ export function DoctorLogin() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'transparent' }}>
       {/* Soft green glow for doctor portal */}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(26,158,95,0.05) 0%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(31,157,104,0.05) 0%, transparent 70%)' }} />
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -63,12 +63,12 @@ export function DoctorLogin() {
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 rounded text-sm outline-none transition-all"
                   style={{
-                    background: '#FAFAF7',
-                    border: '1px solid rgba(23,25,28,0.12)',
-                    color: '#17191C',
+                    background: 'rgba(243,247,249,0.92)',
+                    border: '1px solid rgba(23,35,43,0.12)',
+                    color: '#17232B',
                   }}
-                  onFocus={e => { e.target.style.borderColor = 'rgba(26,158,95,0.45)'; e.target.style.boxShadow = '0 0 0 3px rgba(26,158,95,0.09)'; }}
-                  onBlur={e => { e.target.style.borderColor = 'rgba(23,25,28,0.12)'; e.target.style.boxShadow = ''; }}
+                  onFocus={e => { e.target.style.borderColor = 'rgba(31,157,104,0.45)'; e.target.style.boxShadow = '0 0 0 3px rgba(31,157,104,0.09)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(23,35,43,0.12)'; e.target.style.boxShadow = ''; }}
                   placeholder="+91 Phone or Email"
                 />
               </div>
@@ -85,12 +85,12 @@ export function DoctorLogin() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-9 pr-10 py-2.5 rounded text-sm outline-none transition-all"
                   style={{
-                    background: '#FAFAF7',
-                    border: '1px solid rgba(23,25,28,0.12)',
-                    color: '#17191C',
+                    background: 'rgba(243,247,249,0.92)',
+                    border: '1px solid rgba(23,35,43,0.12)',
+                    color: '#17232B',
                   }}
-                  onFocus={e => { e.target.style.borderColor = 'rgba(26,158,95,0.45)'; e.target.style.boxShadow = '0 0 0 3px rgba(26,158,95,0.09)'; }}
-                  onBlur={e => { e.target.style.borderColor = 'rgba(23,25,28,0.12)'; e.target.style.boxShadow = ''; }}
+                  onFocus={e => { e.target.style.borderColor = 'rgba(31,157,104,0.45)'; e.target.style.boxShadow = '0 0 0 3px rgba(31,157,104,0.09)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(23,35,43,0.12)'; e.target.style.boxShadow = ''; }}
                   placeholder="Password"
                 />
                 <button
@@ -122,7 +122,7 @@ export function DoctorLogin() {
 
           {/* Security note */}
           <div className="mt-6 flex items-center gap-2 px-3 py-2 rounded"
-            style={{ background: 'rgba(26,158,95,0.06)', border: '1px solid rgba(26,158,95,0.18)' }}>
+            style={{ background: 'rgba(31,157,104,0.06)', border: '1px solid rgba(31,157,104,0.18)' }}>
             <ShieldCheck size={13} className="text-med-green flex-shrink-0" />
             <span className="text-2xs text-text-muted">Secure Medical Operations Network · TLS 1.3 · AES-256</span>
           </div>

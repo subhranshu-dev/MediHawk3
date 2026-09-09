@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ToastProvider } from '@/components/ui/Toast'
 import { InitSequence } from '@/components/ui/InitSequence'
 import { MediHawkAtmosphere } from '@/components/ui/MediHawkAtmosphere'
@@ -38,6 +39,14 @@ import { AdminLocations } from '@/pages/admin/AdminLocations'
 import { AdminHistory } from '@/pages/admin/AdminHistory'
 import { AdminDemoControls } from '@/pages/admin/AdminDemoControls'
 
+// Subtle page transition config
+const PAGE_TRANSITION = {
+  initial:    { opacity: 0, y: 6 },
+  animate:    { opacity: 1, y: 0 },
+  exit:       { opacity: 0, y: -3 },
+  transition: { duration: 0.22, ease: 'easeOut' },
+}
+
 function RequireAuth({ children, role }: { children: React.ReactNode; role?: 'doctor' | 'admin' }) {
   const { user } = useStore()
   if (!user) return <Navigate to={role === 'admin' ? '/auth/admin' : '/auth/doctor'} replace />
@@ -51,21 +60,27 @@ function SimulationRunner() {
 }
 
 function DoctorPortal() {
+  const location = useLocation()
   return (
     <RequireAuth role="doctor">
       <DoctorLayout>
-        <Routes>
-          <Route path="/" element={<DoctorHome />} />
-          <Route path="/order" element={<DoctorOrder />} />
-          <Route path="/track" element={<DoctorTrack />} />
-          <Route path="/history" element={<DoctorHistory />} />
-        </Routes>
+        <AnimatePresence mode="wait">
+          <motion.div key={location.pathname} {...PAGE_TRANSITION}>
+            <Routes location={location}>
+              <Route path="/" element={<DoctorHome />} />
+              <Route path="/order" element={<DoctorOrder />} />
+              <Route path="/track" element={<DoctorTrack />} />
+              <Route path="/history" element={<DoctorHistory />} />
+            </Routes>
+          </motion.div>
+        </AnimatePresence>
       </DoctorLayout>
     </RequireAuth>
   )
 }
 
 function AdminPortal() {
+  const location = useLocation()
   return (
     <RequireAuth role="admin">
       <div className="flex min-h-screen">
@@ -73,20 +88,29 @@ function AdminPortal() {
         <div className="flex-1 flex flex-col min-h-screen min-w-0">
           <AdminLayout>
             <div className="flex-1 flex flex-col min-h-0">
-              <Routes>
-                <Route path="/" element={<AdminOverview />} />
-                <Route path="/orders" element={<AdminOrders />} />
-                <Route path="/missions" element={<AdminMissions />} />
-                <Route path="/fleet" element={<AdminFleet />} />
-                <Route path="/inventory" element={<AdminInventory />} />
-                <Route path="/coldchain" element={<AdminColdChain />} />
-                <Route path="/safety" element={<AdminSafety />} />
-                <Route path="/alerts" element={<AdminAlerts />} />
-                <Route path="/verification" element={<AdminVerification />} />
-                <Route path="/analytics" element={<AdminAnalytics />} />
-                <Route path="/locations" element={<AdminLocations />} />
-                <Route path="/history" element={<AdminHistory />} />
-              </Routes>
+              {/* Transitions apply to content area only — sidebar/topbar stay stable */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location.pathname}
+                  {...PAGE_TRANSITION}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                >
+                  <Routes location={location}>
+                    <Route path="/" element={<AdminOverview />} />
+                    <Route path="/orders" element={<AdminOrders />} />
+                    <Route path="/missions" element={<AdminMissions />} />
+                    <Route path="/fleet" element={<AdminFleet />} />
+                    <Route path="/inventory" element={<AdminInventory />} />
+                    <Route path="/coldchain" element={<AdminColdChain />} />
+                    <Route path="/safety" element={<AdminSafety />} />
+                    <Route path="/alerts" element={<AdminAlerts />} />
+                    <Route path="/verification" element={<AdminVerification />} />
+                    <Route path="/analytics" element={<AdminAnalytics />} />
+                    <Route path="/locations" element={<AdminLocations />} />
+                    <Route path="/history" element={<AdminHistory />} />
+                  </Routes>
+                </motion.div>
+              </AnimatePresence>
               <AdminDemoControls />
             </div>
           </AdminLayout>
@@ -96,24 +120,20 @@ function AdminPortal() {
   )
 }
 
-export default function App() {
-  const [initComplete, setInitComplete] = useState(false)
-
-  const handleInitComplete = useCallback(() => {
-    setInitComplete(true)
-  }, [])
+function AppRoutes({ initComplete, onInitComplete }: {
+  initComplete: boolean
+  onInitComplete: () => void
+}) {
+  const location = useLocation()
 
   return (
-    <BrowserRouter>
-      <MediHawkAtmosphere />
-      <CursorSystem />
-      {/* z-index:1 ensures all page content renders above the fixed atmosphere (z-index:0) */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <ToastProvider>
-          <SimulationRunner />
-          <InitSequence onComplete={handleInitComplete} />
-          {initComplete && (
-            <Routes>
+    <ToastProvider>
+      <SimulationRunner />
+      <InitSequence onComplete={onInitComplete} />
+      {initComplete && (
+        <AnimatePresence mode="wait">
+          <motion.div key={location.pathname.split('/')[1] ?? 'home'} {...PAGE_TRANSITION}>
+            <Routes location={location}>
               <Route path="/" element={<LandingPage />} />
               <Route path="/auth/doctor" element={<DoctorLogin />} />
               <Route path="/auth/admin" element={<AdminLogin />} />
@@ -121,8 +141,24 @@ export default function App() {
               <Route path="/admin/*" element={<AdminPortal />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          )}
-        </ToastProvider>
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </ToastProvider>
+  )
+}
+
+export default function App() {
+  const [initComplete, setInitComplete] = useState(false)
+  const handleInitComplete = useCallback(() => setInitComplete(true), [])
+
+  return (
+    <BrowserRouter>
+      <MediHawkAtmosphere />
+      <CursorSystem />
+      {/* z-index:1 keeps all page content above the fixed atmosphere layer (z-index:0) */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <AppRoutes initComplete={initComplete} onInitComplete={handleInitComplete} />
       </div>
     </BrowserRouter>
   )

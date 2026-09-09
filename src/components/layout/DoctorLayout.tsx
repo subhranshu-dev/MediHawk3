@@ -25,33 +25,33 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
       {/* Top bar */}
       <header className="sticky top-0 z-30"
         style={{
-          background: 'rgba(250,250,247,0.92)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(23,25,28,0.09)',
-          boxShadow: '0 1px 8px rgba(23,25,28,0.06)',
+          background: 'rgba(165,192,208,0.92)',
+          backdropFilter: 'blur(16px)',
+          borderBottom: '1px solid rgba(40,62,75,0.22)',
+          boxShadow: '0 2px 14px rgba(28,44,56,0.14)',
         }}>
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">
           <MediHawkLogo size="sm" />
           <div className="flex items-center gap-2">
             {isDemo && (
               <span className="text-2xs px-1.5 py-0.5 rounded font-bold tracking-widest uppercase"
-                style={{ border: '1px solid rgba(224,107,16,0.28)', color: '#B85700', background: 'rgba(224,107,16,0.07)' }}>
+                style={{ border: '1px solid rgba(217,139,36,0.28)', color: '#B87010', background: 'rgba(217,139,36,0.07)' }}>
                 DEMO
               </span>
             )}
             <button className="p-2 rounded transition-colors text-text-secondary hover:text-text-primary"
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,25,28,0.06)'}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,35,43,0.06)'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}>
               <Bell size={16} />
             </button>
             <div className="w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(26,158,95,0.10)', border: '1px solid rgba(26,158,95,0.24)' }}>
+              style={{ background: 'rgba(31,157,104,0.10)', border: '1px solid rgba(31,157,104,0.24)' }}>
               <User size={13} className="text-med-green" />
             </div>
             <button
               onClick={handleLogout}
               className="p-1.5 rounded transition-colors text-text-muted hover:text-text-secondary"
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,25,28,0.06)'}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,35,43,0.06)'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
               title="Logout"
             >
@@ -69,10 +69,10 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
       {/* Bottom Nav */}
       <nav className="sticky bottom-0"
         style={{
-          background: 'rgba(250,250,247,0.95)',
-          backdropFilter: 'blur(12px)',
-          borderTop: '1px solid rgba(23,25,28,0.09)',
-          boxShadow: '0 -1px 8px rgba(23,25,28,0.06)',
+          background: 'rgba(160,188,204,0.94)',
+          backdropFilter: 'blur(16px)',
+          borderTop: '1px solid rgba(40,62,75,0.22)',
+          boxShadow: '0 -2px 14px rgba(28,44,56,0.14)',
         }}>
         <div className="flex max-w-2xl mx-auto w-full">
           {NAV_ITEMS.map((item) => (
@@ -87,7 +87,7 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
             >
               {({ isActive }) => (
                 <>
-                  <item.icon size={20} style={{ color: isActive ? '#D71920' : undefined }} />
+                  <item.icon size={20} style={{ color: isActive ? '#C62832' : undefined }} />
                   <span className="text-2xs font-medium">{item.label}</span>
                 </>
               )}

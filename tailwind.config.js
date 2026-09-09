@@ -4,68 +4,92 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── Platinum environment (remapped from old dark names) ──
-        obsidian:  '#F4F3EF',   // was #08090C — now platinum bg
-        graphite:  '#ECEBE6',   // was #0F1117 — now secondary surface
-        charcoal:  '#FAFAF7',   // was #161921 — now elevated surface
-        slate:     '#F0EEE7',   // was #1E2230 — now surface-2 / input bg
-        panel:     '#EFEDE6',   // was #242838 — now panel
-        elevated:  '#FFFFFF',   // was #2C3045 — now pure white elevated
+        // ── Surgical blue-gray environment ──────────────────────────
+        obsidian:  '#C8D8E2',   // primary bg (deeper mid-tone)
+        graphite:  '#C4D4DD',   // secondary surface
+        charcoal:  '#EDF2F5',   // elevated surface (pearl)
+        slate:     '#D0DCE4',   // input bg / surface-2
+        panel:     '#D0DEEA',   // panel bg
+        elevated:  '#F4F7F9',   // near-white elevated
 
-        // ── Ink system (replaces old white/opacity borders) ──
-        ink: '#17191C',
+        // ── Ink (dark text/borders on light bg) ──────────────────────
+        ink: '#17232B',
 
-        // ── Explicit platinum tokens ──
+        // ── Surgical blue — the distinctive medical-aerospace accent ──
+        'surgical-blue': {
+          DEFAULT: '#486A7A',
+          light:   '#5E7F8E',
+          muted:   '#7594A1',
+          soft:    '#A8C0C9',
+          glow:    'rgba(72,106,122,0.10)',
+        },
+
+        // ── Deep graphite — aerospace structure ───────────────────────
+        'graphite-deep': {
+          DEFAULT: '#26343D',
+          mid:     '#34444D',
+          soft:    '#3E5260',
+          hover:   '#445A67',
+        },
+
+        // ── Platinum scale (kept for compatibility) ───────────────────
         platinum: {
-          DEFAULT: '#F4F3EF',
-          50:  '#FDFCFA',
-          100: '#FAF9F5',
-          200: '#F4F3EF',
-          300: '#ECEBE6',
-          400: '#E6E4DD',
-          500: '#DDDBD2',
-          600: '#D4D1C7',
-          700: '#C8C6BC',
+          DEFAULT: '#C8D8E2',
+          50:  '#EDF2F5',
+          100: '#DDE8EE',
+          200: '#C8D8E2',
+          300: '#BFCFD9',
+          400: '#B2C4CF',
+          500: '#A4B8C7',
+          600: '#96AAB8',
+          700: '#869CAD',
         },
-        ivory: '#FAFAF7',
+        ivory: '#EDF2F5',
 
-        // ── Text system ──
-        'text-primary':   '#17191C',
-        'text-secondary': '#52566B',
-        'text-muted':     '#8E9298',
+        // ── Text system ───────────────────────────────────────────────
+        'text-primary':   '#17232B',
+        'text-secondary': '#4A6070',
+        'text-muted':     '#6E8899',
 
-        // ── Medical crimson ──
+        // ── Medical crimson ───────────────────────────────────────────
         crimson: {
-          DEFAULT: '#D71920',
-          light:   '#E53535',
-          dark:    '#A90F17',
-          deep:    '#7D0A10',
-          glow:    'rgba(215,25,32,0.10)',
+          DEFAULT: '#C62832',
+          light:   '#D62839',
+          dark:    '#A91F2A',
+          deep:    '#7D1520',
+          glow:    'rgba(198,40,50,0.10)',
         },
 
-        // ── Safety green ──
+        // ── Safety green ──────────────────────────────────────────────
         'med-green': {
-          DEFAULT: '#1A9E5F',
-          light:   '#20C878',
-          dark:    '#158450',
-          glow:    'rgba(26,158,95,0.10)',
+          DEFAULT: '#1F9D68',
+          light:   '#22B87A',
+          dark:    '#187A52',
+          glow:    'rgba(31,157,104,0.10)',
         },
 
-        // ── Operational amber/orange ──
+        // ── Warning amber ─────────────────────────────────────────────
         amber: {
-          DEFAULT: '#E06B10',
-          light:   '#F59932',
-          dark:    '#B85700',
-          glow:    'rgba(224,107,16,0.10)',
+          DEFAULT: '#D98B24',
+          light:   '#F5A833',
+          dark:    '#B87010',
+          glow:    'rgba(217,139,36,0.10)',
         },
 
-        // ── Metallic accents ──
+        // ── Info steel ────────────────────────────────────────────────
+        info: {
+          DEFAULT: '#55798A',
+          light:   '#6A90A2',
+          dark:    '#3E5C6C',
+        },
+
+        // ── Metal scale ───────────────────────────────────────────────
         metal: {
-          100: '#8E9298',
-          200: '#6E7280',
-          300: '#52566B',
-          400: '#383C4E',
-          500: '#252832',
+          100: '#8EA5B0',
+          200: '#6E8895',
+          300: '#53636D',
+          400: '#384552',
+          500: '#253340',
         },
       },
 
@@ -80,37 +104,46 @@ export default {
       },
 
       backgroundImage: {
-        // NO grid backgrounds
-        'mh-radial-crimson': 'radial-gradient(ellipse at 50% 0%, rgba(215,25,32,0.06) 0%, transparent 65%)',
-        'mh-radial-green':   'radial-gradient(ellipse at 100% 100%, rgba(26,158,95,0.04) 0%, transparent 60%)',
-        'mh-radial-warm':    'radial-gradient(ellipse at 30% 60%, rgba(244,243,239,0.9) 0%, transparent 70%)',
+        'mh-radial-crimson':  'radial-gradient(ellipse at 50% 0%, rgba(198,40,50,0.06) 0%, transparent 65%)',
+        'mh-radial-green':    'radial-gradient(ellipse at 100% 100%, rgba(31,157,104,0.04) 0%, transparent 60%)',
+        'mh-radial-surgical': 'radial-gradient(ellipse at 20% 40%, rgba(72,106,122,0.14) 0%, transparent 65%)',
+        'mh-radial-cool':     'radial-gradient(ellipse at 80% 10%, rgba(180,210,225,0.28) 0%, transparent 60%)',
       },
 
       boxShadow: {
-        'inner-subtle': 'inset 0 1px 0 0 rgba(255,255,255,0.6)',
-        'inner-top':    'inset 0 1px 0 0 rgba(23,25,28,0.04)',
-        'sm-ink':    '0 1px 3px rgba(23,25,28,0.08), 0 1px 2px rgba(23,25,28,0.05)',
-        'md-ink':    '0 4px 12px rgba(23,25,28,0.10), 0 2px 4px rgba(23,25,28,0.06)',
-        'lg-ink':    '0 8px 24px rgba(23,25,28,0.12), 0 4px 8px rgba(23,25,28,0.07)',
-        'crimson':   '0 4px 16px rgba(215,25,32,0.20)',
-        'green':     '0 4px 16px rgba(26,158,95,0.20)',
+        'inner-subtle':  'inset 0 1px 0 0 rgba(255,255,255,0.65)',
+        'inner-top':     'inset 0 1px 0 0 rgba(255,255,255,0.50)',
+        'sm-ink':  '0 2px 8px rgba(45,65,75,0.08), 0 1px 3px rgba(45,65,75,0.04)',
+        'md-ink':  '0 8px 28px rgba(45,65,75,0.10), 0 3px 8px rgba(45,65,75,0.06)',
+        'lg-ink':  '0 20px 56px rgba(45,65,75,0.12), 0 8px 20px rgba(45,65,75,0.07)',
+        'panel':   '0 6px 24px rgba(45,65,75,0.08), 0 2px 6px rgba(45,65,75,0.05), inset 0 1px 0 rgba(255,255,255,0.68)',
+        'panel-hover': '0 18px 52px rgba(45,65,75,0.13), 0 6px 16px rgba(45,65,75,0.08), inset 0 1px 0 rgba(255,255,255,0.78)',
+        'panel-elevated': '0 12px 40px rgba(45,65,75,0.10), 0 4px 12px rgba(45,65,75,0.06), inset 0 1px 0 rgba(255,255,255,0.75)',
+        'crimson': '0 4px 16px rgba(198,40,50,0.22)',
+        'green':   '0 4px 16px rgba(31,157,104,0.22)',
+        'surgical':'0 4px 16px rgba(72,106,122,0.18)',
       },
 
       animation: {
-        'pulse-slow':   'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'float':        'float 6s ease-in-out infinite',
-        'rotate-slow':  'spin 20s linear infinite',
-        'ping-slow':    'ping 3s cubic-bezier(0, 0, 0.2, 1) infinite',
-        'atmo-drift':   'atmo-drift 22s ease-in-out infinite',
-        'atmo-pulse':   'atmo-pulse 8s ease-in-out infinite',
-        'crimson-breath': 'crimson-breath 6s ease-in-out infinite',
-        'signal-travel': 'signal-travel 3.5s ease-in-out infinite',
+        'pulse-slow':      'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'float':           'float 6s ease-in-out infinite',
+        'rotate-slow':     'spin 20s linear infinite',
+        'ping-slow':       'ping 3s cubic-bezier(0, 0, 0.2, 1) infinite',
+        'atmo-drift':      'atmo-drift 22s ease-in-out infinite',
+        'atmo-pulse':      'atmo-pulse 8s ease-in-out infinite',
+        'crimson-breath':  'crimson-breath 7s ease-in-out infinite',
+        'signal-travel':   'signal-travel 3.5s ease-in-out infinite',
+        'surgical-shift':  'surgical-shift 18s ease-in-out infinite',
       },
 
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
           '50%':       { transform: 'translateY(-8px) rotate(1deg)' },
+        },
+        'surgical-shift': {
+          '0%, 100%': { opacity: '0.55', transform: 'scale(1)' },
+          '50%':       { opacity: '0.80', transform: 'scale(1.06)' },
         },
       },
     },

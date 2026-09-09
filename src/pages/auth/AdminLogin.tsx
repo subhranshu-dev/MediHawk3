@@ -29,7 +29,7 @@ export function AdminLogin() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'transparent' }}>
       {/* Subtle crimson glow for admin portal */}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(215,25,32,0.05) 0%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(198,40,50,0.05) 0%, transparent 70%)' }} />
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -46,7 +46,7 @@ export function AdminLogin() {
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ background: 'rgba(215,25,32,0.09)', border: '1px solid rgba(215,25,32,0.20)' }}>
+              style={{ background: 'rgba(198,40,50,0.09)', border: '1px solid rgba(198,40,50,0.20)' }}>
               <Shield size={18} className="text-crimson" />
             </div>
             <div>
@@ -67,9 +67,9 @@ export function AdminLogin() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 rounded text-sm outline-none transition-all"
-                  style={{ background: '#FAFAF7', border: '1px solid rgba(23,25,28,0.12)', color: '#17191C' }}
-                  onFocus={e => { e.target.style.borderColor = 'rgba(215,25,32,0.40)'; e.target.style.boxShadow = '0 0 0 3px rgba(215,25,32,0.07)'; }}
-                  onBlur={e => { e.target.style.borderColor = 'rgba(23,25,28,0.12)'; e.target.style.boxShadow = ''; }}
+                  style={{ background: 'rgba(243,247,249,0.92)', border: '1px solid rgba(23,35,43,0.12)', color: '#17232B' }}
+                  onFocus={e => { e.target.style.borderColor = 'rgba(198,40,50,0.40)'; e.target.style.boxShadow = '0 0 0 3px rgba(198,40,50,0.07)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(23,35,43,0.12)'; e.target.style.boxShadow = ''; }}
                   placeholder="admin@medihawk.in"
                 />
               </div>
@@ -84,9 +84,9 @@ export function AdminLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-9 pr-10 py-2.5 rounded text-sm outline-none transition-all"
-                  style={{ background: '#FAFAF7', border: '1px solid rgba(23,25,28,0.12)', color: '#17191C' }}
-                  onFocus={e => { e.target.style.borderColor = 'rgba(215,25,32,0.40)'; e.target.style.boxShadow = '0 0 0 3px rgba(215,25,32,0.07)'; }}
-                  onBlur={e => { e.target.style.borderColor = 'rgba(23,25,28,0.12)'; e.target.style.boxShadow = ''; }}
+                  style={{ background: 'rgba(243,247,249,0.92)', border: '1px solid rgba(23,35,43,0.12)', color: '#17232B' }}
+                  onFocus={e => { e.target.style.borderColor = 'rgba(198,40,50,0.40)'; e.target.style.boxShadow = '0 0 0 3px rgba(198,40,50,0.07)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(23,35,43,0.12)'; e.target.style.boxShadow = ''; }}
                   placeholder="Password"
                 />
                 <button type="button" onClick={() => setShowPw(!showPw)}
@@ -110,7 +110,7 @@ export function AdminLogin() {
           </form>
 
           <div className="mt-6 flex items-center gap-2 px-3 py-2 rounded"
-            style={{ background: 'rgba(215,25,32,0.05)', border: '1px solid rgba(215,25,32,0.16)' }}>
+            style={{ background: 'rgba(198,40,50,0.05)', border: '1px solid rgba(198,40,50,0.16)' }}>
             <ShieldCheck size={13} className="text-crimson flex-shrink-0" />
             <span className="text-2xs text-text-muted">Secure Medical Operations Network · Restricted Access</span>
           </div>

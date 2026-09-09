@@ -5,9 +5,9 @@ import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Carte
 import { generateDailyMetrics, ORDERS } from '@/data/mockData'
 
 const PRIORITY_DATA = [
-  { name: 'Emergency', value: ORDERS.filter(o => o.priority === 'emergency').length, color: '#DC2626' },
-  { name: 'Urgent', value: ORDERS.filter(o => o.priority === 'urgent').length, color: '#D97706' },
-  { name: 'Normal', value: ORDERS.filter(o => o.priority === 'normal').length, color: '#475569' },
+  { name: 'Emergency', value: ORDERS.filter(o => o.priority === 'emergency').length, color: '#C62832' },
+  { name: 'Urgent', value: ORDERS.filter(o => o.priority === 'urgent').length, color: '#D98B24' },
+  { name: 'Normal', value: ORDERS.filter(o => o.priority === 'normal').length, color: '#486A7A' },
 ]
 
 const AVG_TIME_DATA = generateDailyMetrics(6)
@@ -77,17 +77,17 @@ export function AdminAnalytics() {
             <BarChart data={AVG_TIME_DATA} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
               <defs>
                 <linearGradient id="timeGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#16A34A" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#16A34A" stopOpacity={0.2} />
+                  <stop offset="0%" stopColor="#1F9D68" stopOpacity={0.8} />
+                  <stop offset="100%" stopColor="#1F9D68" stopOpacity={0.2} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="date" tickFormatter={(v) => v.slice(5)} tick={{ fill: '#4E5668', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#4E5668', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="4 4" stroke="rgba(67,88,99,0.12)" />
+              <XAxis dataKey="date" tickFormatter={(v) => v.slice(5)} tick={{ fill: '#4A6070', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#4A6070', fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ background: '#1E2230', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6 }}
-                itemStyle={{ color: '#EDF0F7', fontFamily: 'Space Mono', fontSize: 11 }}
-                labelStyle={{ color: '#8892A8', fontSize: 10 }}
+                contentStyle={{ background: 'rgba(243,247,249,0.97)', border: '1px solid rgba(67,88,99,0.18)', borderRadius: 6, boxShadow: '0 8px 24px rgba(45,65,75,0.12)' }}
+                itemStyle={{ color: '#17232B', fontFamily: 'Space Mono', fontSize: 11 }}
+                labelStyle={{ color: '#4A6070', fontSize: 10 }}
               />
               <Bar dataKey="avg_time" fill="url(#timeGrad)" radius={[3, 3, 0, 0]} />
             </BarChart>
@@ -107,8 +107,8 @@ export function AdminAnalytics() {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: '#1E2230', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6 }}
-                  itemStyle={{ color: '#EDF0F7', fontSize: 11 }}
+                  contentStyle={{ background: 'rgba(243,247,249,0.97)', border: '1px solid rgba(67,88,99,0.18)', borderRadius: 6, boxShadow: '0 8px 24px rgba(45,65,75,0.12)' }}
+                  itemStyle={{ color: '#17232B', fontSize: 11 }}
                 />
               </PieChart>
             </ResponsiveContainer>
