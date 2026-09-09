@@ -183,6 +183,13 @@ export function LandingPage() {
               ))}
             </div>
 
+            {/* Mission caption strip */}
+            <div className="absolute bottom-[4.8rem] left-0 right-0 flex justify-center pointer-events-none overflow-hidden">
+              <p className="text-[8px] tracking-[0.24em] text-[#3D4E62]" style={{ fontFamily: 'Space Mono, monospace' }}>
+                AUTONOMOUS MEDICAL FLIGHT · MH-01 · PHC CHANDAKA · COLD CHAIN STABLE · 5.8°C
+              </p>
+            </div>
+
             {/* Live indicator */}
             <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded bg-graphite/80 backdrop-blur-sm border border-med-green/30">
               <span className="relative flex h-2 w-2">

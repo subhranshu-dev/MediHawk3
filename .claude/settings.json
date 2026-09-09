@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx playwright *)",
+      "Bash(which chromium-browser || which google-chrome || which chromium 2>/dev/null | head -3 *)",
+      "Read(//usr/bin/**)",
+      "Bash(google-chrome --headless=new --screenshot=/tmp/medihawk-landing.png --window-size=1280,900 --no-sandbox --disable-gpu http://localhost:5173)",
+      "Bash(node /tmp/snap.cjs)",
+      "Bash(npm run dev -- --port 5173 &>/tmp/vite_v5.log & *)",
+      "Bash(node -e ' *)",
+      "Bash(ls /home/subhranshu/.cache/ms-playwright/)",
+      "Read(//home/subhranshu/.cache/ms-playwright/**)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('version'\\)\\)\")",
+      "Read(//home/subhranshu/.cache/ms-playwright/chromium_headless_shell-1243/**)",
+      "Bash(PLAYWRIGHT_BROWSERS_PATH=/home/subhranshu/.cache/ms-playwright node -e ' *)",
+      "Bash(pkill -f \"vite.*5173\")",
+      "Bash(echo \"Server PID: $!\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(echo \"PID $!\")",
+      "Bash(npm --prefix /home/subhranshu/MediHawk3 run dev -- --port 5173)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
