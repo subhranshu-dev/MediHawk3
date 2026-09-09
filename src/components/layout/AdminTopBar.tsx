@@ -14,14 +14,23 @@ export function AdminTopBar() {
   }
 
   return (
-    <header className="fixed top-0 right-0 z-30 bg-graphite/95 backdrop-blur-sm border-b border-white/6"
-      style={{ left: 'var(--sidebar-width, 208px)' }}>
+    <header
+      className="fixed top-0 right-0 z-30"
+      style={{
+        left: 'var(--sidebar-width, 208px)',
+        background: 'rgba(250,250,247,0.92)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(23,25,28,0.09)',
+        boxShadow: '0 1px 8px rgba(23,25,28,0.06)',
+      }}
+    >
       <div className="flex items-center justify-between px-5 h-14">
-        {/* Breadcrumb / context */}
+        {/* Breadcrumb */}
         <div className="flex items-center gap-2">
           <span className="text-2xs text-text-muted tracking-widest uppercase font-semibold">Admin Command Center</span>
           {isDemo && (
-            <span className="text-2xs px-2 py-0.5 rounded border border-amber/30 text-amber bg-amber-glow font-bold tracking-widest uppercase">
+            <span className="text-2xs px-2 py-0.5 rounded font-bold tracking-widest uppercase"
+              style={{ border: '1px solid rgba(224,107,16,0.28)', color: '#B85700', background: 'rgba(224,107,16,0.07)' }}>
               DEMO
             </span>
           )}
@@ -29,9 +38,11 @@ export function AdminTopBar() {
 
         {/* Right */}
         <div className="flex items-center gap-1">
-          {/* Alert bell */}
           <button
-            className="relative p-2 rounded hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors"
+            className="relative p-2 rounded transition-colors text-text-secondary hover:text-text-primary"
+            style={{ transition: 'background 150ms ease' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,25,28,0.06)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
             onClick={() => navigate('/admin/alerts')}
           >
             <Bell size={16} />
@@ -42,14 +53,19 @@ export function AdminTopBar() {
             )}
           </button>
 
-          <button className="p-2 rounded hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors">
+          <button
+            className="p-2 rounded transition-colors text-text-secondary hover:text-text-primary"
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,25,28,0.06)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+          >
             <Settings size={16} />
           </button>
 
           {/* User */}
-          <div className="flex items-center gap-2 ml-2 pl-2 border-l border-white/8">
-            <div className="w-7 h-7 rounded-full bg-crimson/20 border border-crimson/30 flex items-center justify-center">
-              <User size={13} className="text-crimson-light" />
+          <div className="flex items-center gap-2 ml-2 pl-2" style={{ borderLeft: '1px solid rgba(23,25,28,0.10)' }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center"
+              style={{ background: 'rgba(215,25,32,0.10)', border: '1px solid rgba(215,25,32,0.24)' }}>
+              <User size={13} className="text-crimson" />
             </div>
             <div className="hidden md:flex flex-col leading-none">
               <span className="text-xs font-medium text-text-primary">{user?.name}</span>
@@ -57,7 +73,9 @@ export function AdminTopBar() {
             </div>
             <button
               onClick={handleLogout}
-              className="p-1.5 ml-1 rounded hover:bg-white/5 text-text-muted hover:text-text-secondary transition-colors"
+              className="p-1.5 ml-1 rounded transition-colors text-text-muted hover:text-text-secondary"
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(23,25,28,0.06)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
               title="Logout"
             >
               <LogOut size={14} />
@@ -74,8 +92,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="min-h-screen bg-obsidian"
-      style={{ '--sidebar-width': sidebarOpen ? '208px' : '56px' } as React.CSSProperties}
+      className="min-h-screen"
+      style={{
+        background: 'transparent',
+        '--sidebar-width': sidebarOpen ? '208px' : '56px',
+      } as React.CSSProperties}
     >
       <AdminTopBar />
       <div

@@ -17,7 +17,11 @@
       "Bash(echo \"Server PID: $!\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
       "Bash(echo \"PID $!\")",
-      "Bash(npm --prefix /home/subhranshu/MediHawk3 run dev -- --port 5173)"
+      "Bash(npm --prefix /home/subhranshu/MediHawk3 run dev -- --port 5173)",
+      "Bash(grep -E '\\\\.\\(css|scss|ts|tsx\\)$')",
+      "Bash(/home/subhranshu/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome --headless=new --no-sandbox --disable-gpu --screenshot=/tmp/v7_landing.png --window-size=1360,900 --hide-scrollbars --virtual-time-budget=4000 --run-all-compositor-stages-before-draw --disable-background-timer-throttling 'javascript:sessionStorage.setItem\\('\\\\''mh_init_v2'\\\\'','\\\\''1'\\\\''\\);location.href='\\\\''http://localhost:5173/'\\\\''')",
+      "Bash(find /home/subhranshu -name \"playwright\" -type d 2>/dev/null | head -5 *)",
+      "Read(//home/subhranshu/**)"
     ],
     "additionalDirectories": [
       "/tmp"

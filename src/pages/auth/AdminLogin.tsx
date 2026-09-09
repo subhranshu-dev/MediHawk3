@@ -26,10 +26,10 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-obsidian flex items-center justify-center px-4">
-      <div className="absolute inset-0 border-grid opacity-100 pointer-events-none" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, rgba(220,38,38,0.06) 0%, transparent 70%)' }} />
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'transparent' }}>
+      {/* Subtle crimson glow for admin portal */}
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(215,25,32,0.05) 0%, transparent 70%)' }} />
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -42,11 +42,12 @@ export function AdminLogin() {
           Back to home
         </button>
 
-        <div className="panel p-8 border-crimson/10">
+        <div className="panel p-8">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-crimson/10 border border-crimson/20 flex items-center justify-center">
-              <Shield size={18} className="text-crimson-light" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(215,25,32,0.09)', border: '1px solid rgba(215,25,32,0.20)' }}>
+              <Shield size={18} className="text-crimson" />
             </div>
             <div>
               <h1 className="text-base font-bold text-text-primary">ADMIN ACCESS</h1>
@@ -65,7 +66,10 @@ export function AdminLogin() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded bg-slate border border-white/10 text-text-primary text-sm outline-none focus:border-crimson/40 focus:ring-1 focus:ring-crimson/15 transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 rounded text-sm outline-none transition-all"
+                  style={{ background: '#FAFAF7', border: '1px solid rgba(23,25,28,0.12)', color: '#17191C' }}
+                  onFocus={e => { e.target.style.borderColor = 'rgba(215,25,32,0.40)'; e.target.style.boxShadow = '0 0 0 3px rgba(215,25,32,0.07)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(23,25,28,0.12)'; e.target.style.boxShadow = ''; }}
                   placeholder="admin@medihawk.in"
                 />
               </div>
@@ -79,7 +83,10 @@ export function AdminLogin() {
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-10 py-2.5 rounded bg-slate border border-white/10 text-text-primary text-sm outline-none focus:border-crimson/40 focus:ring-1 focus:ring-crimson/15 transition-all"
+                  className="w-full pl-9 pr-10 py-2.5 rounded text-sm outline-none transition-all"
+                  style={{ background: '#FAFAF7', border: '1px solid rgba(23,25,28,0.12)', color: '#17191C' }}
+                  onFocus={e => { e.target.style.borderColor = 'rgba(215,25,32,0.40)'; e.target.style.boxShadow = '0 0 0 3px rgba(215,25,32,0.07)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(23,25,28,0.12)'; e.target.style.boxShadow = ''; }}
                   placeholder="Password"
                 />
                 <button type="button" onClick={() => setShowPw(!showPw)}
@@ -102,8 +109,9 @@ export function AdminLogin() {
             </button>
           </form>
 
-          <div className="mt-6 flex items-center gap-2 px-3 py-2 rounded bg-crimson/5 border border-crimson/15">
-            <ShieldCheck size={13} className="text-crimson-light flex-shrink-0" />
+          <div className="mt-6 flex items-center gap-2 px-3 py-2 rounded"
+            style={{ background: 'rgba(215,25,32,0.05)', border: '1px solid rgba(215,25,32,0.16)' }}>
+            <ShieldCheck size={13} className="text-crimson flex-shrink-0" />
             <span className="text-2xs text-text-muted">Secure Medical Operations Network · Restricted Access</span>
           </div>
 

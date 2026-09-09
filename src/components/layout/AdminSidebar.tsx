@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   LayoutDashboard, Package, Navigation, Cpu, Archive,
@@ -30,15 +30,23 @@ export function AdminSidebar() {
   return (
     <aside className={clsx(
       'fixed left-0 top-0 bottom-0 z-40 flex flex-col transition-all duration-300',
-      'bg-graphite border-r border-white/6',
       sidebarOpen ? 'w-52' : 'w-14'
-    )}>
+    )} style={{
+      background: 'rgba(250,250,247,0.92)',
+      backdropFilter: 'blur(12px)',
+      borderRight: '1px solid rgba(23,25,28,0.10)',
+      boxShadow: '2px 0 12px rgba(23,25,28,0.06)',
+    }}>
       {/* Logo */}
-      <div className="flex items-center justify-between px-3 py-4 border-b border-white/6 min-h-[60px]">
+      <div className="flex items-center justify-between px-3 py-4 min-h-[60px]"
+        style={{ borderBottom: '1px solid rgba(23,25,28,0.08)' }}>
         {sidebarOpen && <MediHawkLogo size="sm" />}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="ml-auto p-1.5 rounded hover:bg-white/5 text-text-muted hover:text-text-secondary transition-colors"
+          className="ml-auto p-1.5 rounded transition-colors"
+          style={{ color: '#8E9298' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(23,25,28,0.06)'; (e.currentTarget as HTMLElement).style.color = '#17191C'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = '#8E9298'; }}
           aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           {sidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
@@ -55,18 +63,22 @@ export function AdminSidebar() {
             className={({ isActive }) => clsx(
               'flex items-center gap-3 px-3 py-2.5 mx-1 rounded transition-all duration-150 group relative',
               isActive
-                ? 'bg-crimson/10 text-text-primary border border-crimson/20'
-                : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                ? 'text-crimson-dark'
+                : 'text-text-secondary hover:text-text-primary'
             )}
+            style={({ isActive }) => isActive ? {
+              background: 'rgba(215,25,32,0.07)',
+              border: '1px solid rgba(215,25,32,0.18)',
+            } : {
+              border: '1px solid transparent',
+            }}
           >
             {({ isActive }) => (
               <>
                 <item.icon
                   size={16}
-                  className={clsx(
-                    'flex-shrink-0 transition-colors',
-                    isActive ? 'text-crimson-light' : 'text-text-muted group-hover:text-text-secondary'
-                  )}
+                  className="flex-shrink-0 transition-colors"
+                  style={{ color: isActive ? '#D71920' : undefined }}
                 />
                 {sidebarOpen && (
                   <span className="text-xs font-medium truncate">{item.label}</span>
@@ -80,7 +92,12 @@ export function AdminSidebar() {
                   </span>
                 )}
                 {!sidebarOpen && (
-                  <span className="absolute left-full ml-2 px-2 py-1 rounded bg-elevated border border-white/10 text-xs text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                  <span className="absolute left-full ml-2 px-2 py-1 rounded text-xs text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
+                    style={{
+                      background: 'rgba(250,250,247,0.96)',
+                      border: '1px solid rgba(23,25,28,0.10)',
+                      boxShadow: '0 4px 12px rgba(23,25,28,0.10)',
+                    }}>
                     {item.label}
                   </span>
                 )}
@@ -92,9 +109,10 @@ export function AdminSidebar() {
 
       {/* Demo badge */}
       {sidebarOpen && isDemo && (
-        <div className="px-3 py-2 border-t border-white/6">
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-amber-glow border border-amber/20">
-            <span className="text-2xs text-amber-light font-bold tracking-widest uppercase">Simulation Mode</span>
+        <div className="px-3 py-2" style={{ borderTop: '1px solid rgba(23,25,28,0.08)' }}>
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded"
+            style={{ background: 'rgba(224,107,16,0.08)', border: '1px solid rgba(224,107,16,0.22)' }}>
+            <span className="text-2xs font-bold tracking-widest uppercase" style={{ color: '#B85700' }}>Simulation Mode</span>
           </div>
         </div>
       )}

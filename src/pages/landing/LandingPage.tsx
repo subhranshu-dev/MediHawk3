@@ -25,40 +25,31 @@ function FallbackDrone() {
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
         className="relative"
       >
-        {/* SVG drone illustration fallback */}
         <svg width="200" height="140" viewBox="0 0 200 140" fill="none">
-          {/* Body */}
-          <rect x="70" y="55" width="60" height="20" rx="4" fill="#1E2230" stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
-          {/* Arms */}
-          <line x1="70" y1="65" x2="30" y2="45" stroke="#2C3045" strokeWidth="3"/>
-          <line x1="130" y1="65" x2="170" y2="45" stroke="#2C3045" strokeWidth="3"/>
-          <line x1="70" y1="65" x2="30" y2="85" stroke="#2C3045" strokeWidth="3"/>
-          <line x1="130" y1="65" x2="170" y2="85" stroke="#2C3045" strokeWidth="3"/>
-          {/* Propeller circles */}
+          <rect x="70" y="55" width="60" height="20" rx="4" fill="#E8E6DF" stroke="rgba(23,25,28,0.10)" strokeWidth="1"/>
+          <line x1="70" y1="65" x2="30" y2="45" stroke="#C8C6BC" strokeWidth="3"/>
+          <line x1="130" y1="65" x2="170" y2="45" stroke="#C8C6BC" strokeWidth="3"/>
+          <line x1="70" y1="65" x2="30" y2="85" stroke="#C8C6BC" strokeWidth="3"/>
+          <line x1="130" y1="65" x2="170" y2="85" stroke="#C8C6BC" strokeWidth="3"/>
           {[[30,45],[170,45],[30,85],[170,85]].map(([cx,cy],i)=>(
             <g key={i}>
-              <circle cx={cx} cy={cy} r="18" fill="#12141A" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
-              <ellipse cx={cx} cy={cy} rx="16" ry="3" fill="#2C3045" opacity="0.7"/>
-              {/* Nav lights */}
-              <circle cx={cx} cy={cy-18} r="3" fill={i<2?'#22C55E':'#EF4444'} opacity="0.9">
+              <circle cx={cx} cy={cy} r="18" fill="#E0DED7" stroke="rgba(23,25,28,0.08)" strokeWidth="1"/>
+              <ellipse cx={cx} cy={cy} rx="16" ry="3" fill="#C8C6BC" opacity="0.7"/>
+              <circle cx={cx} cy={cy-18} r="3" fill={i<2?'#20C878':'#EF4444'} opacity="0.9">
                 <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.5s" repeatCount="indefinite"/>
               </circle>
             </g>
           ))}
-          {/* Medical cross */}
-          <rect x="92" y="48" width="16" height="5" rx="1" fill="#DC2626"/>
-          <rect x="96" y="44" width="8" height="13" rx="1" fill="#DC2626"/>
-          {/* Payload box */}
-          <rect x="78" y="75" width="44" height="14" rx="3" fill="#161921" stroke="rgba(220,38,38,0.3)" strokeWidth="1"/>
-          <text x="100" y="85" textAnchor="middle" fill="#DC2626" fontSize="8" fontWeight="bold">PAYLOAD</text>
-          {/* Landing legs */}
+          <rect x="92" y="48" width="16" height="5" rx="1" fill="#D71920"/>
+          <rect x="96" y="44" width="8" height="13" rx="1" fill="#D71920"/>
+          <rect x="78" y="75" width="44" height="14" rx="3" fill="#FAFAF7" stroke="rgba(215,25,32,0.25)" strokeWidth="1"/>
+          <text x="100" y="85" textAnchor="middle" fill="#D71920" fontSize="8" fontWeight="bold">PAYLOAD</text>
           {[[78,89],[122,89]].map(([x,y],i)=>(
-            <line key={i} x1={x} y1={y} x2={x} y2={y+12} stroke="#2C3045" strokeWidth="2"/>
+            <line key={i} x1={x} y1={y} x2={x} y2={y+12} stroke="#C8C6BC" strokeWidth="2"/>
           ))}
-          {/* Route line */}
-          <path d="M10 120 Q100 100 190 120" stroke="#DC2626" strokeWidth="1.5" strokeDasharray="6,4" fill="none" opacity="0.4"/>
-          <circle cx="15" cy="120" r="4" fill="#22C55E" opacity="0.8"/>
-          <circle cx="185" cy="120" r="4" fill="#F59E0B" opacity="0.8"/>
+          <path d="M10 120 Q100 100 190 120" stroke="#D71920" strokeWidth="1.5" strokeDasharray="6,4" fill="none" opacity="0.35"/>
+          <circle cx="15" cy="120" r="4" fill="#20C878" opacity="0.8"/>
+          <circle cx="185" cy="120" r="4" fill="#E06B10" opacity="0.8"/>
         </svg>
       </motion.div>
     </div>
@@ -70,23 +61,12 @@ export function LandingPage() {
   const drone = useStore(s => s.drones.find(d => d.status === 'in_flight') ?? s.drones[0])
 
   return (
-    <div className="min-h-screen bg-obsidian overflow-hidden relative">
-      {/* Background grid */}
-      <div className="absolute inset-0 border-grid opacity-100 pointer-events-none" />
-
-      {/* Radial glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full"
-          style={{ background: 'radial-gradient(ellipse, rgba(220,38,38,0.07) 0%, transparent 70%)' }} />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[400px] rounded-full"
-          style={{ background: 'radial-gradient(ellipse, rgba(22,163,74,0.04) 0%, transparent 70%)' }} />
-      </div>
-
+    <div className="min-h-screen overflow-hidden relative" style={{ background: 'transparent' }}>
       {/* Top nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
         <MediHawkLogo size="md" />
         <div className="flex items-center gap-3">
-          <span className="text-2xs px-2 py-1 rounded border border-amber/30 text-amber bg-amber-glow font-bold tracking-widest uppercase">
+          <span className="text-2xs px-2 py-1 rounded border border-amber/40 text-amber-dark bg-amber/8 font-bold tracking-widest uppercase">
             DEMO MODE
           </span>
           <button onClick={() => navigate('/auth/doctor')} className="btn-ghost text-xs">
@@ -176,27 +156,40 @@ export function LandingPage() {
                 { label: 'BAT',  value: `${drone?.battery.toFixed(0) ?? '78'}%` },
                 { label: 'TEMP', value: `${drone?.temperature.toFixed(1) ?? '5.8'}°C` },
               ].map((t) => (
-                <div key={t.label} className="px-3 py-1.5 rounded bg-graphite/80 backdrop-blur-sm border border-white/10">
+                <div key={t.label}
+                  className="px-3 py-1.5 rounded"
+                  style={{
+                    background: 'rgba(250,250,247,0.88)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(23,25,28,0.10)',
+                    boxShadow: '0 2px 8px rgba(23,25,28,0.08)',
+                  }}>
                   <div className="telemetry-label text-center">{t.label}</div>
-                  <div className="font-mono-data font-bold text-xs text-text-primary text-center">{t.value}</div>
+                  <div className="font-mono-data font-bold text-xs text-primary text-center" style={{ color: '#17191C' }}>{t.value}</div>
                 </div>
               ))}
             </div>
 
             {/* Mission caption strip */}
             <div className="absolute bottom-[4.8rem] left-0 right-0 flex justify-center pointer-events-none overflow-hidden">
-              <p className="text-[8px] tracking-[0.24em] text-[#3D4E62]" style={{ fontFamily: 'Space Mono, monospace' }}>
+              <p className="text-[8px] tracking-[0.24em] text-text-muted" style={{ fontFamily: 'Space Mono, monospace' }}>
                 AUTONOMOUS MEDICAL FLIGHT · MH-01 · PHC CHANDAKA · COLD CHAIN STABLE · 5.8°C
               </p>
             </div>
 
             {/* Live indicator */}
-            <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded bg-graphite/80 backdrop-blur-sm border border-med-green/30">
+            <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded"
+              style={{
+                background: 'rgba(250,250,247,0.88)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(26,158,95,0.25)',
+                boxShadow: '0 2px 8px rgba(23,25,28,0.07)',
+              }}>
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-med-green-light opacity-75 animate-ping" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-med-green" />
               </span>
-              <span className="text-2xs text-med-green-light font-bold tracking-wide">SIMULATION ACTIVE</span>
+              <span className="text-2xs font-bold tracking-wide" style={{ color: '#1A7A4A' }}>SIMULATION ACTIVE</span>
             </div>
           </motion.div>
         </div>
@@ -209,9 +202,10 @@ export function LandingPage() {
           className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-12"
         >
           {STATS.map((stat, i) => (
-            <div key={i} className="panel p-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-crimson/10 border border-crimson/20 flex items-center justify-center flex-shrink-0">
-                <stat.icon size={18} className="text-crimson-light" />
+            <div key={i} className="panel p-4 flex items-center gap-4 panel-interactive">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(215,25,32,0.08)', border: '1px solid rgba(215,25,32,0.18)' }}>
+                <stat.icon size={18} className="text-crimson" />
               </div>
               <div>
                 <div className="font-mono-data font-black text-2xl text-text-primary">
@@ -239,7 +233,9 @@ export function LandingPage() {
             'AI Flight Safety',
             'ZeroTier VPN Link',
           ].map((feature) => (
-            <span key={feature} className="px-3 py-1 rounded-full text-xs text-text-secondary border border-white/10 bg-white/3">
+            <span key={feature}
+              className="px-3 py-1 rounded-full text-xs text-text-secondary"
+              style={{ border: '1px solid rgba(23,25,28,0.10)', background: 'rgba(23,25,28,0.04)' }}>
               {feature}
             </span>
           ))}
@@ -247,32 +243,35 @@ export function LandingPage() {
 
         {/* Route visualization strip */}
         <div className="mt-16 relative">
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8" />
+          <div className="mh-signal-line mb-8" />
+
           <div className="flex items-center justify-between max-w-lg mx-auto">
             {/* Hub */}
             <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-lg bg-med-green/10 border border-med-green/30 flex items-center justify-center">
-                <ShieldCheck size={20} className="text-med-green-light" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ background: 'rgba(26,158,95,0.08)', border: '1px solid rgba(26,158,95,0.24)' }}>
+                <ShieldCheck size={20} className="text-med-green" />
               </div>
               <span className="text-xs text-text-secondary text-center">MediHawk<br/>Central Hub</span>
             </div>
 
             {/* Route line */}
             <div className="flex-1 mx-4 relative">
-              <div className="h-px bg-gradient-to-r from-med-green/50 via-crimson to-amber/50" />
-              {/* Moving drone dot */}
+              <div className="h-px"
+                style={{ background: 'linear-gradient(to right, rgba(26,158,95,0.4), rgba(215,25,32,0.5), rgba(224,107,16,0.4))' }} />
               <motion.div
                 animate={{ x: ['0%', '100%', '0%'] }}
                 transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                className="absolute -top-1.5 w-3 h-3 rounded-full bg-crimson border-2 border-crimson-light"
-                style={{ boxShadow: '0 0 8px rgba(220,38,38,0.6)' }}
+                className="absolute -top-1.5 w-3 h-3 rounded-full bg-crimson border-2"
+                style={{ borderColor: '#E53535', boxShadow: '0 0 8px rgba(215,25,32,0.40)' }}
               />
             </div>
 
             {/* PHC */}
             <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-lg bg-amber/10 border border-amber/30 flex items-center justify-center">
-                <Package size={20} className="text-amber-light" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ background: 'rgba(224,107,16,0.08)', border: '1px solid rgba(224,107,16,0.24)' }}>
+                <Package size={20} className="text-amber" />
               </div>
               <span className="text-xs text-text-secondary text-center">PHC<br/>Chandaka</span>
             </div>
@@ -285,7 +284,10 @@ export function LandingPage() {
 
         {/* Footer note */}
         <div className="mt-16 text-center text-2xs text-text-muted">
-          <span className="border border-amber/20 bg-amber-glow rounded px-2 py-1 text-amber">DEMO / SIMULATION</span>
+          <span className="rounded px-2 py-1 text-amber-dark font-semibold"
+            style={{ border: '1px solid rgba(224,107,16,0.22)', background: 'rgba(224,107,16,0.07)' }}>
+            DEMO / SIMULATION
+          </span>
           <span className="ml-2">All data is simulated for demonstration purposes. No live drone operations.</span>
         </div>
       </div>

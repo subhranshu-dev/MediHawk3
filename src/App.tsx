@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/Toast'
 import { InitSequence } from '@/components/ui/InitSequence'
+import { MediHawkAtmosphere } from '@/components/ui/MediHawkAtmosphere'
+import { CursorSystem } from '@/components/ui/CursorSystem'
 import { useSimulation } from '@/hooks/useSimulation'
 import { useStore } from '@/store'
 
@@ -103,20 +105,25 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <SimulationRunner />
-        <InitSequence onComplete={handleInitComplete} />
-        {initComplete && (
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth/doctor" element={<DoctorLogin />} />
-            <Route path="/auth/admin" element={<AdminLogin />} />
-            <Route path="/doctor/*" element={<DoctorPortal />} />
-            <Route path="/admin/*" element={<AdminPortal />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        )}
-      </ToastProvider>
+      <MediHawkAtmosphere />
+      <CursorSystem />
+      {/* z-index:1 ensures all page content renders above the fixed atmosphere (z-index:0) */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <ToastProvider>
+          <SimulationRunner />
+          <InitSequence onComplete={handleInitComplete} />
+          {initComplete && (
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/auth/doctor" element={<DoctorLogin />} />
+              <Route path="/auth/admin" element={<AdminLogin />} />
+              <Route path="/doctor/*" element={<DoctorPortal />} />
+              <Route path="/admin/*" element={<AdminPortal />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          )}
+        </ToastProvider>
+      </div>
     </BrowserRouter>
   )
 }
