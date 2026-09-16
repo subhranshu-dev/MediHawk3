@@ -3,9 +3,10 @@ import { clsx } from 'clsx'
 import { Home, Plus, Navigation, History, LogOut, User, Bell } from 'lucide-react'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { useStore } from '@/store'
+import { HawkieFloat } from '@/components/hawkie/HawkieFloat'
 
 const NAV_ITEMS = [
-  { label: 'Home', path: '/doctor', icon: Home, end: true },
+  { label: 'Home', path: '/', icon: Home, end: true },
   { label: 'Order', path: '/doctor/order', icon: Plus },
   { label: 'Track', path: '/doctor/track', icon: Navigation },
   { label: 'History', path: '/doctor/history', icon: History },
@@ -65,6 +66,8 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
         {children}
       </main>
+
+      <HawkieFloat portal="doctor" />
 
       {/* Bottom Nav */}
       <nav className="sticky bottom-0"

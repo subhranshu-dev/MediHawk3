@@ -1,4 +1,20 @@
-# Logs
+# ── Python / Backend ─────────────────────────────────────────────────────────
+backend/.env
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/.pytest_cache/
+backend/instance/*.db
+backend/instance/*.db-shm
+backend/instance/*.db-wal
+*.pyc
+*.pyo
+__pycache__/
+.pytest_cache/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
 logs
 *.log
 npm-debug.log*

@@ -294,14 +294,19 @@
     font-family: 'Inter', sans-serif;
     border-radius: inherit;
   }
-  /* Deeper surgical blue-gray tile treatment */
-  .leaflet-tile-pane { filter: brightness(0.84) saturate(0.58) hue-rotate(6deg); }
+  /* Surgical blue-gray tile treatment — tuned for OSM tiles */
+  .leaflet-tile-pane { filter: saturate(0.14) brightness(0.86) contrast(0.94); }
   .leaflet-control-zoom a {
     background: rgba(200,220,232,0.95) !important;
     color: #26343D !important;
     border-color: rgba(40,62,75,0.22) !important;
   }
-  .leaflet-control-attribution { display: none; }
+  .leaflet-control-attribution {
+    font-size: 9px !important;
+    opacity: 0.45;
+    background: rgba(255,255,255,0.65) !important;
+    padding: 1px 4px !important;
+  }
 
   /* ── Status dot ─────────────────────────────────────────────── */
   .status-dot-live { @apply relative inline-flex h-2 w-2; }

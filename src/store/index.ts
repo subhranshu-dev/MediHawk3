@@ -4,7 +4,7 @@ import type {
   SystemStatus, TemperatureLog, TelemetryPoint
 } from '@/types'
 import {
-  MOCK_USERS, ORDERS, DRONES, ACTIVE_MISSION,
+  ORDERS, DRONES, ACTIVE_MISSION,
   ALERTS, SYSTEM_STATUS, generateTempLog, generateTelemetryHistory
 } from '@/data/mockData'
 
@@ -12,7 +12,7 @@ interface AppState {
   // Auth
   user: User | null
   isDemo: boolean
-  login: (role: 'doctor' | 'admin') => void
+  loginUser: (user: User) => void
   logout: () => void
   setDemo: (v: boolean) => void
 
@@ -58,9 +58,12 @@ interface AppState {
 
 export const useStore = create<AppState>((set, _get) => ({
   user: null,
-  isDemo: true,
-  login: (role) => set({ user: MOCK_USERS[role] }),
-  logout: () => set({ user: null }),
+  isDemo: false,
+  loginUser: (user) => set({ user }),
+  logout: () => {
+    localStorage.removeItem('mh_jwt')
+    set({ user: null, orders: [] })
+  },
   setDemo: (v) => set({ isDemo: v }),
 
   orders: ORDERS,

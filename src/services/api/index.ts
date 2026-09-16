@@ -1,127 +1,300 @@
-// ─── API Service Layer ────────────────────────────────────────────────────────
-// These services are prepared for the Flask backend.
-// Currently using mock data. Replace BASE_URL and enable real calls to connect.
+// ─── API Service Layer ─────────────────────────────────────────────────────────
+// Connected to Flask backend at BASE_URL.
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
-const IS_DEMO = true // toggle when backend is live
 
+// ─── Token helpers ────────────────────────────────────────────────────────────
+const TOKEN_KEY = 'mh_jwt'
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function saveToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+// ─── Core request ─────────────────────────────────────────────────────────────
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options?.headers as Record<string, string> ?? {}),
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   })
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const code = (body as { error?: { code?: string } }).error?.code ?? `HTTP_${res.status}`
+    const msg  = (body as { error?: { message?: string } }).error?.message ?? res.statusText
+    throw Object.assign(new Error(msg), { code, status: res.status })
+  }
   return res.json()
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-export const authService = {
-  login: (email: string, password: string) =>
-    IS_DEMO
-      ? Promise.resolve({ token: 'demo-token', user: { email } })
-      : request('/api/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+// ─── Backend response → frontend Order adapter ────────────────────────────────
+import type { Order, OrderPriority, OrderStatus } from '@/types'
 
-  logout: () =>
-    IS_DEMO
-      ? Promise.resolve()
-      : request('/api/logout', { method: 'POST' }),
+export function adaptBackendOrder(raw: Record<string, unknown>): Order {
+  const items = (raw.items as Array<Record<string, unknown>>) ?? []
+  const first = items[0] ?? {}
+  const medicine =
+    items.length === 0 ? 'Unknown' :
+    items.length === 1 ? String(first.name ?? '') :
+    `${first.name ?? ''} (+${items.length - 1} more)`
+  const quantity = items.reduce((s, i) => s + Number(i.quantity ?? 0), 0)
+  const dest = (raw.destination as Record<string, unknown>) ?? {}
+
+  return {
+    id: String(raw.id ?? ''),
+    doctor_id: String(raw.doctor_id ?? ''),
+    doctor_name: String(raw.doctor_name ?? raw.doctor_id ?? ''),
+    from_location: String(raw.from_location ?? 'hub-01'),
+    from_location_name: String(raw.from_location_name ?? 'MediHawk Central Hub'),
+    destination_location: String(dest.facility_id ?? raw.destination_location ?? ''),
+    destination_name: String(dest.name ?? raw.destination_name ?? ''),
+    medicine,
+    quantity,
+    unit: String(first.unit ?? 'units'),
+    priority: String(raw.priority ?? 'normal') as OrderPriority,
+    status: String(raw.status ?? 'pending') as OrderStatus,
+    drone_id: raw.drone_id ? String(raw.drone_id) : undefined,
+    inspection_done: Boolean(raw.inspection_done ?? false),
+    qr_verified: Boolean(raw.qr_verified ?? false),
+    temperature: Number(raw.temperature ?? 0),
+    ordered_at: String(raw.ordered_at ?? new Date().toISOString()),
+    launched_at: raw.launched_at ? String(raw.launched_at) : undefined,
+    delivered_at: raw.delivered_at ? String(raw.delivered_at) : undefined,
+    delivery_time_minutes: raw.delivery_time_minutes ? Number(raw.delivery_time_minutes) : undefined,
+    notes: raw.notes ? String(raw.notes) : undefined,
+    otp: raw.otp ? String(raw.otp) : undefined,
+    receiver_verified: raw.receiver_verified ? Boolean(raw.receiver_verified) : undefined,
+    items: raw.items as Order['items'],
+  }
+}
+
+// ─── Auth ──────────────────────────────────────────────────────────────────────
+interface LoginPayload {
+  email?: string
+  phone?: string
+  password: string
+  role: string
+}
+
+interface LoginResponse {
+  success: boolean
+  token: string
+  user: { id: string; name: string; email: string; role: string; phone?: string; phc?: string }
+}
+
+interface OtpRequestResponse {
+  success: boolean
+  message: string
+}
+
+interface OtpVerifyResponse {
+  success: boolean
+  token: string
+  user: { id: string; name: string; email: string; role: string; phc?: string }
+}
+
+export const authService = {
+  login: (payload: LoginPayload): Promise<LoginResponse> =>
+    request<LoginResponse>('/api/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  logout: () => { clearToken() },
 
   verifyToken: () =>
-    IS_DEMO
-      ? Promise.resolve({ valid: true })
-      : request('/api/verify-token'),
+    request<{ valid: boolean }>('/api/verify-token'),
+
+  requestOtp: (email: string, role: 'doctor' | 'admin'): Promise<OtpRequestResponse> =>
+    request<OtpRequestResponse>('/api/auth/otp/request', {
+      method: 'POST',
+      body: JSON.stringify({ email, role }),
+    }),
+
+  verifyOtp: (email: string, otp: string, role: 'doctor' | 'admin'): Promise<OtpVerifyResponse> =>
+    request<OtpVerifyResponse>('/api/auth/otp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, role }),
+    }),
+
+  requestAdminOtp: (email: string): Promise<OtpRequestResponse> =>
+    request<OtpRequestResponse>('/api/auth/admin/otp/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyAdminOtp: (email: string, otp: string): Promise<{ success: boolean; message: string; reset_token: string }> =>
+    request('/api/auth/admin/otp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    }),
+
+  doctorSignup: (data: { name: string; email: string; phone: string; password: string; phc_id?: string }): Promise<{ success: boolean; message: string; user_id: string }> =>
+    request('/api/auth/doctor/signup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  adminSignup: (data: { name: string; email: string; password: string; invite_code: string }): Promise<{ success: boolean; message: string; user_id: string }> =>
+    request('/api/auth/admin/signup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  verifyEmail: (email: string, otp: string, role: 'doctor' | 'admin'): Promise<{ success: boolean; message: string }> =>
+    request('/api/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, role }),
+    }),
+
+  forgotPasswordRequest: (contact: string): Promise<{ success: boolean; message: string }> =>
+    request('/api/auth/forgot-password/request', {
+      method: 'POST',
+      body: JSON.stringify({ contact }),
+    }),
+
+  forgotPasswordVerify: (contact: string, otp: string): Promise<{ success: boolean; message: string; reset_token: string }> =>
+    request('/api/auth/forgot-password/verify', {
+      method: 'POST',
+      body: JSON.stringify({ contact, otp }),
+    }),
+
+  resetPassword: (reset_token: string, new_password: string): Promise<{ success: boolean; message: string }> =>
+    request('/api/auth/password-reset', {
+      method: 'POST',
+      body: JSON.stringify({ reset_token, new_password }),
+    }),
+
+  adminResetPassword: (reset_token: string, new_password: string): Promise<{ success: boolean; message: string }> =>
+    request('/api/auth/admin/password-reset', {
+      method: 'POST',
+      body: JSON.stringify({ reset_token, new_password }),
+    }),
 }
 
-// ─── Orders ───────────────────────────────────────────────────────────────────
+// ─── Orders ────────────────────────────────────────────────────────────────────
 export const orderService = {
-  create: (data: unknown) =>
-    IS_DEMO
-      ? Promise.resolve({ id: `MH-2026-${Date.now()}` })
-      : request('/api/order', { method: 'POST', body: JSON.stringify(data) }),
+  create: (data: {
+    items: Array<{ medicine_id: string; quantity: number }>
+    priority: string
+    latitude: number
+    longitude: number
+    location_error?: string
+  }): Promise<{ success: boolean; order: Record<string, unknown> }> =>
+    request('/api/order', { method: 'POST', body: JSON.stringify(data) }),
 
-  list: () =>
-    IS_DEMO ? Promise.resolve([]) : request('/api/orders'),
+  list: (params?: string): Promise<Order[]> =>
+    request<{ success: boolean; orders: Array<Record<string, unknown>> }>(
+      `/api/orders${params ? `?${params}` : ''}`
+    ).then(r => r.orders.map(adaptBackendOrder)),
 
-  listPending: () =>
-    IS_DEMO ? Promise.resolve([]) : request('/api/orders/pending'),
+  listPending: (): Promise<Order[]> =>
+    request<{ success: boolean; orders: Array<Record<string, unknown>> }>('/api/orders/pending')
+      .then(r => r.orders.map(adaptBackendOrder)),
 
-  get: (id: string) =>
-    IS_DEMO ? Promise.resolve(null) : request(`/api/order/${id}`),
+  get: (id: string): Promise<Order | null> =>
+    request<{ success: boolean; order: Record<string, unknown> }>(`/api/order/${id}`)
+      .then(r => adaptBackendOrder(r.order))
+      .catch(() => null),
 
-  confirm: (id: string) =>
-    IS_DEMO ? Promise.resolve() : request(`/api/confirm/${id}`, { method: 'POST' }),
+  confirm: (id: string): Promise<{ success: boolean; order: Record<string, unknown> }> =>
+    request(`/api/confirm/${id}`, { method: 'POST' }),
 
-  received: (id: string) =>
-    IS_DEMO ? Promise.resolve() : request(`/api/received/${id}`, { method: 'POST' }),
-
-  cancel: (id: string) =>
-    IS_DEMO ? Promise.resolve() : request(`/api/cancel/${id}`, { method: 'POST' }),
+  cancel: (id: string): Promise<{ success: boolean; order: Record<string, unknown> }> =>
+    request(`/api/cancel/${id}`, { method: 'POST' }),
 }
 
-// ─── Drone ────────────────────────────────────────────────────────────────────
-export const droneService = {
-  status: () =>
-    IS_DEMO ? Promise.resolve(null) : request('/api/drone/status'),
-
-  telemetry: () =>
-    IS_DEMO ? Promise.resolve(null) : request('/api/drone/telemetry'),
-
-  emergencyRTL: () =>
-    IS_DEMO ? Promise.resolve() : request('/api/drone/emergency-rtl', { method: 'POST' }),
-
-  hold: () =>
-    IS_DEMO ? Promise.resolve() : request('/api/drone/hold', { method: 'POST' }),
-
-  resume: () =>
-    IS_DEMO ? Promise.resolve() : request('/api/drone/resume', { method: 'POST' }),
+// ─── Inventory ─────────────────────────────────────────────────────────────────
+export interface BackendInventoryItem {
+  id: string
+  medicine: string
+  quantity: number
+  unit: string
+  temperature_required: string
+  expiry_date: string
+  status: string
+  category: string
+  min_threshold: number
+  is_active: boolean
 }
 
-// ─── Inventory ────────────────────────────────────────────────────────────────
 export const inventoryService = {
-  list: () =>
-    IS_DEMO ? Promise.resolve([]) : request('/api/inventory'),
+  list: (): Promise<BackendInventoryItem[]> =>
+    request<{ success: boolean; inventory: BackendInventoryItem[] }>('/api/inventory')
+      .then(r => r.inventory),
 
-  check: (medicine: string) =>
-    IS_DEMO ? Promise.resolve({ available: true }) : request(`/api/inventory/check/${medicine}`),
+  get: (id: string): Promise<BackendInventoryItem | null> =>
+    request<{ success: boolean; item: BackendInventoryItem }>(`/api/inventory/${id}`)
+      .then(r => r.item)
+      .catch(() => null),
 
-  update: (data: unknown) =>
-    IS_DEMO ? Promise.resolve() : request('/api/inventory/update', { method: 'POST', body: JSON.stringify(data) }),
-
-  lowStock: () =>
-    IS_DEMO ? Promise.resolve([]) : request('/api/inventory/low-stock'),
+  update: (id: string, data: Partial<BackendInventoryItem>): Promise<BackendInventoryItem> =>
+    request<{ success: boolean; item: BackendInventoryItem }>(
+      `/api/inventory/${id}`, { method: 'PATCH', body: JSON.stringify(data) }
+    ).then(r => r.item),
 }
 
-// ─── Location ─────────────────────────────────────────────────────────────────
+// ─── Location ──────────────────────────────────────────────────────────────────
+interface LocationResolvePayload {
+  latitude?: number | null
+  longitude?: number | null
+  location_error?: string
+}
+
+interface LocationResolveResponse {
+  success: boolean
+  location: { latitude: number; longitude: number }
+  nearest_facility: {
+    id: string
+    name: string
+    type: string
+    latitude: number
+    longitude: number
+    distance_km: number
+  }
+}
+
 export const locationService = {
-  list: () =>
-    IS_DEMO ? Promise.resolve([]) : request('/api/locations'),
-
-  get: (id: string) =>
-    IS_DEMO ? Promise.resolve(null) : request(`/api/location/${id}`),
-
-  add: (data: unknown) =>
-    IS_DEMO ? Promise.resolve() : request('/api/locations/add', { method: 'POST', body: JSON.stringify(data) }),
+  resolve: (payload: LocationResolvePayload): Promise<LocationResolveResponse> =>
+    request('/api/location/resolve', { method: 'POST', body: JSON.stringify(payload) }),
 }
 
-// ─── Temperature ─────────────────────────────────────────────────────────────
+// ─── Drone (simulation only in Phase 1C) ───────────────────────────────────────
+export const droneService = {
+  status: (): Promise<null> => Promise.resolve(null),
+  telemetry: (): Promise<null> => Promise.resolve(null),
+  emergencyRTL: (): Promise<void> => Promise.resolve(),
+  hold: (): Promise<void> => Promise.resolve(),
+  resume: (): Promise<void> => Promise.resolve(),
+}
+
+// ─── Temperature (simulation only) ────────────────────────────────────────────
 export const temperatureService = {
-  current: () =>
-    IS_DEMO ? Promise.resolve(null) : request('/api/temperature/current'),
-
-  log: (orderId: string) =>
-    IS_DEMO ? Promise.resolve([]) : request(`/api/temperature/log/${orderId}`),
+  current: (): Promise<null> => Promise.resolve(null),
+  log: (_orderId: string): Promise<[]> => Promise.resolve([]),
 }
 
-// ─── Weather ─────────────────────────────────────────────────────────────────
+// ─── Weather (simulation only) ────────────────────────────────────────────────
 export const weatherService = {
-  check: () =>
-    IS_DEMO ? Promise.resolve({ safe: true, wind_speed: 12 }) : request('/api/weather/check'),
+  check: (): Promise<{ safe: boolean; wind_speed: number }> =>
+    Promise.resolve({ safe: true, wind_speed: 12 }),
 }
 
-// ─── SMS ─────────────────────────────────────────────────────────────────────
+// ─── SMS (not in Phase 1C) ────────────────────────────────────────────────────
 export const smsService = {
-  send: (phone: string, message: string) =>
-    IS_DEMO
-      ? Promise.resolve()
-      : request('/api/send-sms', { method: 'POST', body: JSON.stringify({ phone, message }) }),
+  send: (_phone: string, _message: string): Promise<void> => Promise.resolve(),
 }

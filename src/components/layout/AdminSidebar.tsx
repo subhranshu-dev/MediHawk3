@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
-  LayoutDashboard, Package, Navigation, Cpu, Archive,
-  Thermometer, Shield, Bell, CheckSquare, BarChart3,
+  LayoutDashboard, Package, Navigation, Cpu,
+  BrainCircuit, Shield, Bell, CheckSquare, BarChart3,
   History, ChevronLeft, ChevronRight, MapPin
 } from 'lucide-react'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
@@ -13,8 +13,7 @@ const NAV_ITEMS = [
   { label: 'Orders', path: '/admin/orders', icon: Package },
   { label: 'Active Missions', path: '/admin/missions', icon: Navigation },
   { label: 'Fleet', path: '/admin/fleet', icon: Cpu },
-  { label: 'Inventory', path: '/admin/inventory', icon: Archive },
-  { label: 'Cold Chain', path: '/admin/coldchain', icon: Thermometer },
+  { label: 'Hawkie', path: '/admin/hawkie', icon: BrainCircuit },
   { label: 'AI Flight Safety', path: '/admin/safety', icon: Shield },
   { label: 'Alert Center', path: '/admin/alerts', icon: Bell },
   { label: 'Verification', path: '/admin/verification', icon: CheckSquare },

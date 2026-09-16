@@ -409,18 +409,23 @@ export function generateDailyMetrics(days = 14): DailyMetric[] {
 
 // ─── Inspection Checks ────────────────────────────────────────────────────────
 export const INSPECTION_CHECKS: InspectionCheck[] = [
-  { id: 'qr', label: 'QR Verification', status: 'pass', detail: 'Payload QR matches order MH-2026-00420', mandatory: true },
-  { id: 'medicine', label: 'Medicine Identity', status: 'pass', detail: 'Oxytocin — confirmed', mandatory: true },
-  { id: 'quantity', label: 'Quantity', status: 'pass', detail: '10 ampoules loaded', mandatory: true },
-  { id: 'expiry', label: 'Expiry Date', status: 'pass', detail: 'Valid until 2026-11-20', mandatory: true },
-  { id: 'temperature', label: 'Payload Temperature', status: 'pass', detail: '4.2°C — within 2–8°C range', mandatory: true },
-  { id: 'sealed', label: 'Payload Sealed', status: 'pass', detail: 'Tamper seal intact', mandatory: true },
-  { id: 'mounted', label: 'Box Mounted', status: 'pass', detail: 'Payload secured to MH-D02', mandatory: true },
-  { id: 'battery', label: 'Battery', status: 'pass', detail: '96% — above minimum 20%', mandatory: true },
-  { id: 'gps', label: 'GPS Lock', status: 'pass', detail: 'Accuracy: 0.8 m HDOP', mandatory: true },
-  { id: 'weather', label: 'Weather Clearance', status: 'pass', detail: 'Wind 12 km/h — below limit', mandatory: true },
-  { id: '4g', label: '4G Link', status: 'pass', detail: 'Signal strength: -72 dBm — stable', mandatory: true },
-  { id: 'zerotier', label: 'ZeroTier Link', status: 'pass', detail: 'VPN tunnel active — latency 14 ms', mandatory: false },
+  // ── Airframe & Hardware ────────────────────────────────────────────────────
+  { id: 'propeller',    label: 'Propeller Tightness',       status: 'pass', detail: 'Propellers securely tightened and free of visible damage.', mandatory: true },
+  { id: 'airframe',     label: 'Drone Airframe Inspection', status: 'pass', detail: 'Airframe, arms, motors and structural components inspected.', mandatory: true },
+  { id: 'battery_mount',label: 'Battery Mount Inspection',  status: 'pass', detail: 'Battery securely mounted, connector seated and retention system locked.', mandatory: true },
+  // ── Payload & Medical ─────────────────────────────────────────────────────
+  { id: 'medicine',   label: 'Medicine Identity',   status: 'pass', detail: 'Oxytocin — confirmed', mandatory: true },
+  { id: 'quantity',   label: 'Quantity',            status: 'pass', detail: '10 ampoules loaded', mandatory: true },
+  { id: 'expiry',     label: 'Expiry Date',         status: 'pass', detail: 'Valid until 2026-11-20', mandatory: true },
+  { id: 'temperature',label: 'Payload Temperature', status: 'pass', detail: '4.2°C — within 2–8°C range', mandatory: true },
+  { id: 'sealed',     label: 'Payload Sealed',      status: 'pass', detail: 'Tamper seal intact', mandatory: true },
+  { id: 'mounted',    label: 'Box Mounted',         status: 'pass', detail: 'Payload secured to MH-D02', mandatory: true },
+  // ── Systems & Connectivity ────────────────────────────────────────────────
+  { id: 'battery', label: 'Battery',          status: 'pass', detail: '96% — above minimum 20%', mandatory: true },
+  { id: 'gps',     label: 'GPS Lock',         status: 'pass', detail: 'Accuracy: 0.8 m HDOP', mandatory: true },
+  { id: 'weather', label: 'Weather Clearance',status: 'pass', detail: 'Wind 12 km/h — below limit', mandatory: true },
+  { id: '4g',      label: '4G Link',          status: 'pass', detail: 'Signal strength: -72 dBm — stable', mandatory: true },
+  { id: 'zerotier',label: 'ZeroTier Link',    status: 'pass', detail: 'VPN tunnel active — latency 14 ms', mandatory: false },
 ]
 
 // ─── Hero Stats ───────────────────────────────────────────────────────────────

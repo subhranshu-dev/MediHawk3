@@ -5,6 +5,7 @@ import { Package, Navigation, ShieldCheck, Clock } from 'lucide-react'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { HERO_STATS } from '@/data/mockData'
 import { useStore } from '@/store'
+import { DroneShowcase } from '@/components/drone/DroneShowcase'
 
 const DroneScene3D = lazy<React.FC<{ height?: number; className?: string }>>(() =>
   import('@/components/drone/DroneScene3D').then(m => ({ default: m.DroneScene3D }))
@@ -66,14 +67,11 @@ export function LandingPage() {
       <nav className="relative z-10 flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
         <MediHawkLogo size="md" />
         <div className="flex items-center gap-3">
-          <span className="text-2xs px-2 py-1 rounded border border-amber/40 text-amber-dark bg-amber/8 font-bold tracking-widest uppercase">
-            DEMO MODE
-          </span>
-          <button onClick={() => navigate('/auth/doctor')} className="btn-ghost text-xs">
+          <button onClick={() => navigate('/auth/doctor')} className="btn-secondary text-xs">
             Doctor Portal
           </button>
           <button onClick={() => navigate('/auth/admin')} className="btn-secondary text-xs">
-            Command Center
+            Admin Portal
           </button>
         </div>
       </nav>
@@ -103,9 +101,13 @@ export function LandingPage() {
               <p className="text-xl font-medium text-text-secondary mb-2">
                 When every second counts.
               </p>
-              <p className="text-sm text-text-muted leading-relaxed mb-8 max-w-md">
+              <p className="text-sm text-text-muted leading-relaxed mb-3 max-w-md">
                 Autonomous medical delivery for the moments that cannot wait.
-                Connecting emergency medicines to rural PHCs faster than any ground route.
+                Connecting emergency medicines to rural PHC/CHC faster than any ground route.
+              </p>
+              <p className="text-sm font-medium text-text-secondary mb-8 max-w-md">
+                Bridging distances. Saving lives.{' '}
+                <span className="text-crimson">A healthier, Stronger tomorrow.</span>
               </p>
 
               {/* CTAs */}
@@ -218,78 +220,8 @@ export function LandingPage() {
           ))}
         </motion.div>
 
-        {/* Feature pills */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="flex flex-wrap gap-2 mt-8 justify-center"
-        >
-          {[
-            'Real-time 4G Telemetry',
-            'Cold-Chain Monitoring',
-            'Autonomous Obstacle Avoidance',
-            'OTP Delivery Verification',
-            'AI Flight Safety',
-            'ZeroTier VPN Link',
-          ].map((feature) => (
-            <span key={feature}
-              className="px-3 py-1 rounded-full text-xs text-text-secondary"
-              style={{ border: '1px solid rgba(23,25,28,0.10)', background: 'rgba(23,25,28,0.04)' }}>
-              {feature}
-            </span>
-          ))}
-        </motion.div>
-
-        {/* Route visualization strip */}
-        <div className="mt-16 relative">
-          <div className="mh-signal-line mb-8" />
-
-          <div className="flex items-center justify-between max-w-lg mx-auto">
-            {/* Hub */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center"
-                style={{ background: 'rgba(31,157,104,0.08)', border: '1px solid rgba(31,157,104,0.24)' }}>
-                <ShieldCheck size={20} className="text-med-green" />
-              </div>
-              <span className="text-xs text-text-secondary text-center">MediHawk<br/>Central Hub</span>
-            </div>
-
-            {/* Route line */}
-            <div className="flex-1 mx-4 relative">
-              <div className="h-px"
-                style={{ background: 'linear-gradient(to right, rgba(31,157,104,0.4), rgba(198,40,50,0.5), rgba(217,139,36,0.4))' }} />
-              <motion.div
-                animate={{ x: ['0%', '100%', '0%'] }}
-                transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                className="absolute -top-1.5 w-3 h-3 rounded-full bg-crimson border-2"
-                style={{ borderColor: '#D62839', boxShadow: '0 0 8px rgba(198,40,50,0.40)' }}
-              />
-            </div>
-
-            {/* PHC */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center"
-                style={{ background: 'rgba(217,139,36,0.08)', border: '1px solid rgba(217,139,36,0.24)' }}>
-                <Package size={20} className="text-amber" />
-              </div>
-              <span className="text-xs text-text-secondary text-center">PHC<br/>Chandaka</span>
-            </div>
-          </div>
-
-          <div className="text-center mt-4">
-            <span className="text-2xs text-text-muted">8.4 km · Est. 11 min · Emergency Delivery</span>
-          </div>
-        </div>
-
-        {/* Footer note */}
-        <div className="mt-16 text-center text-2xs text-text-muted">
-          <span className="rounded px-2 py-1 text-amber-dark font-semibold"
-            style={{ border: '1px solid rgba(217,139,36,0.22)', background: 'rgba(217,139,36,0.07)' }}>
-            DEMO / SIMULATION
-          </span>
-          <span className="ml-2">All data is simulated for demonstration purposes. No live drone operations.</span>
-        </div>
+        {/* Premium 3D drone showcase */}
+        <DroneShowcase />
       </div>
     </div>
   )

@@ -114,10 +114,11 @@ export function MissionMap({ height = 400, className, followDrone = true }: Miss
         style={{ height: '100%', width: '100%', background: '#D5E1E6' }}
         zoomControl={false}
       >
-        {/* CartoDB Light tiles — surgical blue-gray tint applied via CSS */}
+        {/* OpenStreetMap tiles — free, no API key required */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          attribution=""
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          maxZoom={19}
         />
 
         {followDrone && <DroneMover />}

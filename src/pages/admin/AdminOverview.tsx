@@ -49,7 +49,7 @@ export function AdminOverview() {
         className="grid grid-cols-2 lg:grid-cols-4 gap-3"
       >
         <MetricBox label="Active Deliveries" value={activeOrders.length} sub="in flight / preparing" accent />
-        <MetricBox label="Incoming Orders" value={pendingOrders.length} sub="awaiting approval" />
+        <MetricBox label="Pending Orders" value={pendingOrders.length} sub="awaiting approval" />
         <MetricBox label="Available Drones" value={availableDrones} sub={`of ${drones.length} total`} />
         <MetricBox label="Critical Alerts" value={criticalAlerts} sub={`${unacknowledged} unacknowledged`} accent={criticalAlerts > 0} />
       </motion.div>
@@ -148,7 +148,7 @@ export function AdminOverview() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/6">
               <div className="flex items-center gap-2">
                 <Package size={13} className="text-amber-light" />
-                <span className="text-xs font-semibold text-text-primary uppercase tracking-wider">Incoming Orders</span>
+                <span className="text-xs font-semibold text-text-primary uppercase tracking-wider">Pending Orders</span>
                 {pendingOrders.length > 0 && (
                   <span className="w-5 h-5 rounded-full bg-amber text-obsidian text-2xs font-bold flex items-center justify-center">
                     {pendingOrders.length}
@@ -179,7 +179,7 @@ export function AdminOverview() {
                         {format(new Date(order.ordered_at), 'HH:mm:ss')}
                       </span>
                       <button
-                        onClick={() => navigate('/admin/orders')}
+                        onClick={() => navigate(`/admin/orders?review=${order.id}`)}
                         className="text-xs text-crimson hover:text-crimson-light transition-colors font-semibold"
                       >
                         REVIEW →

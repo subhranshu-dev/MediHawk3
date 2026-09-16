@@ -41,6 +41,15 @@ export interface InventoryItem {
 }
 
 // ─── Order ────────────────────────────────────────────────────────────────────
+export interface OrderItem {
+  id: string
+  name: string
+  quantity: number
+  category: string
+  unit: string
+  custom?: boolean
+}
+
 export type OrderPriority = 'emergency' | 'urgent' | 'normal'
 export type OrderStatus =
   | 'pending'
@@ -77,6 +86,7 @@ export interface Order {
   notes?: string
   otp?: string
   receiver_verified?: boolean
+  items?: OrderItem[]
 }
 
 // ─── Drone ────────────────────────────────────────────────────────────────────

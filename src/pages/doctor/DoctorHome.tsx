@@ -1,13 +1,34 @@
+import type React from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Package, Navigation, CheckCircle, Clock, MapPin, Wifi } from 'lucide-react'
+import { Package, Navigation, CheckCircle, Clock, MapPin } from 'lucide-react'
 import { useStore } from '@/store'
 import { orderStatusBadge, priorityBadge } from '@/components/ui/StatusBadge'
+import { orderService } from '@/services/api'
 import { format } from 'date-fns'
 
+// Shared card surface style — medical pearl with defined edge and depth
+const CARD: React.CSSProperties = {
+  background: 'rgba(248,250,249,0.96)',
+  border: '1px solid rgba(50,70,78,0.12)',
+  borderRadius: '10px',
+  boxShadow: '0 2px 8px rgba(38,56,64,0.06), 0 8px 24px rgba(38,56,64,0.07)',
+}
+
 export function DoctorHome() {
-  const { user, orders, drones, systemStatus, activeMission } = useStore()
+  const { user, orders, drones, activeMission, addOrder } = useStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    orderService.list()
+      .then(fetched => {
+        fetched.forEach(o => {
+          if (!orders.find(ex => ex.id === o.id)) addOrder(o)
+        })
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const myOrders = orders.filter((o) => o.doctor_id === user?.id)
   const activeOrder = myOrders.find((o) => ['in_flight', 'launched', 'preparing', 'approved'].includes(o.status))
@@ -15,13 +36,12 @@ export function DoctorHome() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
-  const activeDrones = drones.filter((d) => d.status !== 'offline' && d.status !== 'maintenance').length
-
   return (
     <div className="flex flex-col gap-5">
-      {/* Greeting */}
+
+      {/* Doctor identity */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-text-secondary text-sm">{greeting},</p>
+        <p className="text-sm text-text-secondary">{greeting},</p>
         <h1 className="text-2xl font-bold text-text-primary mt-0.5">{user?.name}</h1>
         <div className="flex items-center gap-2 mt-1">
           <MapPin size={13} className="text-text-muted" />
@@ -29,114 +49,171 @@ export function DoctorHome() {
         </div>
       </motion.div>
 
-      {/* Operational status */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="panel p-4 flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-3 w-3">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-med-green-light opacity-75 animate-ping" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-med-green" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-text-primary">Network Operational</p>
-            <p className="text-2xs text-text-muted">{activeDrones} drones active · 4G link stable</p>
-          </div>
-        </div>
-        <Wifi size={18} className="text-med-green-light" />
-      </motion.div>
-
-      {/* Active delivery banner */}
+      {/* Incoming Delivery */}
       {activeOrder && activeMission && (
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.15 }}
+          transition={{ delay: 0.1, duration: 0.18 }}
           onClick={() => navigate('/doctor/track')}
-          className="relative overflow-hidden rounded-lg border border-crimson/30 bg-gradient-to-r from-crimson/10 to-transparent cursor-pointer group"
+          className="relative overflow-hidden cursor-pointer group"
+          style={{
+            ...CARD,
+            border: '1px solid rgba(198,40,50,0.22)',
+            background: 'rgba(255,252,252,0.97)',
+            boxShadow: '0 2px 8px rgba(198,40,50,0.06), 0 8px 28px rgba(38,56,64,0.08)',
+          }}
+          whileHover={{ y: -2, boxShadow: '0 4px 16px rgba(198,40,50,0.10), 0 12px 32px rgba(38,56,64,0.10)' }}
         >
-          <div className="absolute inset-0 bg-crimson/5 group-hover:bg-crimson/8 transition-colors" />
-          <div className="relative p-4">
+          {/* Left arrival pulse bar */}
+          <motion.div
+            className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-[10px]"
+            style={{ background: '#C62832' }}
+            animate={{ opacity: [0.9, 0.35, 0.9] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+
+          <div className="relative p-4 pl-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-2xs text-crimson font-bold tracking-widest uppercase">Active Delivery</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-[10px] font-bold tracking-[0.18em] uppercase"
+                  style={{ color: '#C62832' }}
+                >
+                  Incoming Delivery
+                </span>
+                {/* tiny live pulse */}
+                <span className="relative flex h-1.5 w-1.5">
+                  <motion.span
+                    className="absolute inline-flex h-full w-full rounded-full"
+                    style={{ background: 'rgba(198,40,50,0.55)' }}
+                    animate={{ scale: [1, 2, 1], opacity: [0.7, 0, 0.7] }}
+                    transition={{ duration: 1.8, repeat: Infinity }}
+                  />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: '#C62832' }} />
+                </span>
+              </div>
               {priorityBadge(activeOrder.priority)}
             </div>
-            <h3 className="text-base font-bold text-text-primary">{activeOrder.medicine}</h3>
-            <p className="text-xs text-text-secondary mt-0.5">{activeOrder.quantity} {activeOrder.unit} · {activeOrder.destination_name}</p>
 
-            <div className="flex items-center gap-4 mt-3">
+            <h3 className="text-base font-bold text-text-primary">{activeOrder.medicine}</h3>
+            <p className="text-xs mt-0.5" style={{ color: '#4A6070' }}>
+              {activeOrder.quantity} {activeOrder.unit} · {activeOrder.destination_name}
+            </p>
+
+            <div className="flex items-center gap-5 mt-3">
               <div>
-                <div className="text-2xs text-text-muted">ETA</div>
-                <div className="font-mono-data font-bold text-med-green-light">{activeMission.eta_minutes} min</div>
+                <div className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">ETA</div>
+                <div className="font-mono-data font-bold text-sm" style={{ color: '#1A7E55' }}>
+                  {activeMission.eta_minutes} min
+                </div>
               </div>
               <div>
-                <div className="text-2xs text-text-muted">Altitude</div>
-                <div className="font-mono-data font-bold text-text-primary">
+                <div className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">Altitude</div>
+                <div className="font-mono-data font-bold text-sm text-text-primary">
                   {drones.find(d => d.mission_id)?.altitude ?? 82} m
                 </div>
               </div>
               <div>
-                <div className="text-2xs text-text-muted">Status</div>
+                <div className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">Status</div>
                 <div>{orderStatusBadge(activeOrder.status)}</div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 mt-3 text-xs text-crimson-light">
-              <Navigation size={13} />
+            <div className="flex items-center gap-1.5 mt-3 text-xs" style={{ color: '#C62832' }}>
+              <Navigation size={12} />
               <span>Tap to track live →</span>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Quick actions */}
+      {/* Quick actions — Request / Track */}
       <div className="grid grid-cols-2 gap-3">
+        {/* Request */}
         <motion.button
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.18 }}
           onClick={() => navigate('/doctor/order')}
-          className="flex flex-col items-center gap-3 p-5 rounded-lg border border-crimson/20 bg-crimson/8 hover:bg-crimson/12 transition-colors"
+          className="flex flex-col items-center gap-3 p-5 rounded-[10px] text-left"
+          style={{
+            background: 'rgba(255,250,250,0.97)',
+            border: '1px solid rgba(198,40,50,0.18)',
+            boxShadow: '0 2px 8px rgba(198,40,50,0.06), 0 6px 20px rgba(38,56,64,0.07)',
+            transition: 'box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease',
+          }}
+          whileHover={{
+            y: -2,
+            boxShadow: '0 4px 16px rgba(198,40,50,0.12), 0 10px 28px rgba(38,56,64,0.10)',
+          }}
         >
-          <div className="w-12 h-12 rounded-xl bg-crimson/15 border border-crimson/25 flex items-center justify-center">
-            <Package size={22} className="text-crimson-light" />
-          </div>
+          <motion.div
+            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{
+              background: 'rgba(198,40,50,0.10)',
+              border: '1px solid rgba(198,40,50,0.22)',
+            }}
+            whileHover={{ y: -1 }}
+            transition={{ duration: 0.18 }}
+          >
+            <Package size={20} style={{ color: '#C62832' }} />
+          </motion.div>
           <div className="text-center">
             <p className="text-sm font-bold text-text-primary">Request</p>
-            <p className="text-2xs text-text-muted">Medicine Delivery</p>
+            <p className="text-[11px] text-text-muted mt-0.5">Medicine Delivery</p>
           </div>
         </motion.button>
 
+        {/* Track */}
         <motion.button
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
+          transition={{ delay: 0.23 }}
           onClick={() => navigate('/doctor/track')}
-          className="flex flex-col items-center gap-3 p-5 rounded-lg border border-white/8 bg-white/3 hover:bg-white/5 transition-colors"
+          className="flex flex-col items-center gap-3 p-5 rounded-[10px] text-left"
+          style={{
+            background: 'rgba(246,249,251,0.97)',
+            border: '1px solid rgba(50,70,90,0.14)',
+            boxShadow: '0 2px 8px rgba(38,56,64,0.05), 0 6px 20px rgba(38,56,64,0.07)',
+            transition: 'box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease',
+          }}
+          whileHover={{
+            y: -2,
+            boxShadow: '0 4px 16px rgba(38,56,64,0.10), 0 10px 28px rgba(38,56,64,0.10)',
+          }}
         >
-          <div className="w-12 h-12 rounded-xl bg-white/8 border border-white/12 flex items-center justify-center">
-            <Navigation size={22} className="text-text-secondary" />
-          </div>
+          <motion.div
+            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{
+              background: 'rgba(50,70,90,0.08)',
+              border: '1px solid rgba(50,70,90,0.18)',
+            }}
+            whileHover={{ y: -1 }}
+            transition={{ duration: 0.18 }}
+          >
+            <Navigation size={20} style={{ color: '#3A5060' }} />
+          </motion.div>
           <div className="text-center">
             <p className="text-sm font-bold text-text-primary">Track</p>
-            <p className="text-2xs text-text-muted">Active Delivery</p>
+            <p className="text-[11px] text-text-muted mt-0.5">Active Delivery</p>
           </div>
         </motion.button>
       </div>
 
-      {/* Recent order */}
+      {/* Most Recent Order */}
       {latestOrder && (
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.28 }}
         >
-          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">
+          <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-3" style={{ color: '#7A939E' }}>
             Most Recent Order
           </h2>
-          <div className="panel p-4">
+          <div className="p-4" style={CARD}>
             <div className="flex items-start justify-between mb-2">
               <div>
                 <p className="text-sm font-semibold text-text-primary">{latestOrder.medicine}</p>
-                <p className="text-xs text-text-secondary">{latestOrder.quantity} {latestOrder.unit}</p>
+                <p className="text-xs mt-0.5" style={{ color: '#4A6070' }}>
+                  {latestOrder.quantity} {latestOrder.unit}
+                </p>
               </div>
               {orderStatusBadge(latestOrder.status)}
             </div>
@@ -151,8 +228,8 @@ export function DoctorHome() {
               </span>
             </div>
             {latestOrder.delivery_time_minutes && (
-              <div className="flex items-center gap-1.5 mt-2 text-xs text-med-green-light">
-                <CheckCircle size={13} />
+              <div className="flex items-center gap-1.5 mt-2 text-xs" style={{ color: '#1A7E55' }}>
+                <CheckCircle size={12} />
                 Delivered in {latestOrder.delivery_time_minutes} min
               </div>
             )}
@@ -160,27 +237,56 @@ export function DoctorHome() {
         </motion.div>
       )}
 
-      {/* Orders summary */}
+      {/* Your Orders */}
       <motion.div
         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
+        transition={{ delay: 0.33 }}
       >
-        <h2 className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-3" style={{ color: '#7A939E' }}>
           Your Orders
         </h2>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Total', value: myOrders.length, color: 'text-text-primary' },
-            { label: 'Completed', value: myOrders.filter(o => o.status === 'verified').length, color: 'text-med-green-light' },
-            { label: 'Active', value: myOrders.filter(o => ['in_flight','launched','pending','approved'].includes(o.status)).length, color: 'text-crimson-light' },
+            {
+              label: 'Total',
+              value: myOrders.length,
+              valueColor: '#263840',
+              bg: 'rgba(248,250,249,0.96)',
+              border: 'rgba(50,70,78,0.12)',
+            },
+            {
+              label: 'Completed',
+              value: myOrders.filter(o => o.status === 'verified').length,
+              valueColor: '#1A7E55',
+              bg: 'rgba(246,252,249,0.96)',
+              border: 'rgba(26,126,85,0.14)',
+            },
+            {
+              label: 'Active',
+              value: myOrders.filter(o => ['in_flight','launched','pending','approved'].includes(o.status)).length,
+              valueColor: '#C62832',
+              bg: 'rgba(255,250,250,0.96)',
+              border: 'rgba(198,40,50,0.14)',
+            },
           ].map((stat) => (
-            <div key={stat.label} className="panel p-3 text-center">
-              <div className={`font-mono-data font-bold text-2xl ${stat.color}`}>{stat.value}</div>
-              <div className="text-2xs text-text-muted mt-0.5">{stat.label}</div>
+            <div
+              key={stat.label}
+              className="p-3 text-center rounded-[10px]"
+              style={{
+                background: stat.bg,
+                border: `1px solid ${stat.border}`,
+                boxShadow: '0 2px 8px rgba(38,56,64,0.06)',
+              }}
+            >
+              <div className="font-mono-data font-bold text-2xl" style={{ color: stat.valueColor }}>
+                {stat.value}
+              </div>
+              <div className="text-[10px] mt-0.5" style={{ color: '#7A939E' }}>{stat.label}</div>
             </div>
           ))}
         </div>
       </motion.div>
+
     </div>
   )
 }

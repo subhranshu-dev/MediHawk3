@@ -29,8 +29,7 @@ import { AdminOverview } from '@/pages/admin/AdminOverview'
 import { AdminOrders } from '@/pages/admin/AdminOrders'
 import { AdminMissions } from '@/pages/admin/AdminMissions'
 import { AdminFleet } from '@/pages/admin/AdminFleet'
-import { AdminInventory } from '@/pages/admin/AdminInventory'
-import { AdminColdChain } from '@/pages/admin/AdminColdChain'
+import { AdminHawkie } from '@/pages/admin/AdminHawkie'
 import { AdminSafety } from '@/pages/admin/AdminSafety'
 import { AdminAlerts } from '@/pages/admin/AdminAlerts'
 import { AdminVerification } from '@/pages/admin/AdminVerification'
@@ -38,13 +37,14 @@ import { AdminAnalytics } from '@/pages/admin/AdminAnalytics'
 import { AdminLocations } from '@/pages/admin/AdminLocations'
 import { AdminHistory } from '@/pages/admin/AdminHistory'
 import { AdminDemoControls } from '@/pages/admin/AdminDemoControls'
+import { HawkieFloat } from '@/components/hawkie/HawkieFloat'
 
 // Subtle page transition config
 const PAGE_TRANSITION = {
   initial:    { opacity: 0, y: 6 },
   animate:    { opacity: 1, y: 0 },
   exit:       { opacity: 0, y: -3 },
-  transition: { duration: 0.22, ease: 'easeOut' },
+  transition: { duration: 0.22, ease: 'easeOut' as const },
 }
 
 function RequireAuth({ children, role }: { children: React.ReactNode; role?: 'doctor' | 'admin' }) {
@@ -100,8 +100,7 @@ function AdminPortal() {
                     <Route path="/orders" element={<AdminOrders />} />
                     <Route path="/missions" element={<AdminMissions />} />
                     <Route path="/fleet" element={<AdminFleet />} />
-                    <Route path="/inventory" element={<AdminInventory />} />
-                    <Route path="/coldchain" element={<AdminColdChain />} />
+                    <Route path="/hawkie" element={<AdminHawkie />} />
                     <Route path="/safety" element={<AdminSafety />} />
                     <Route path="/alerts" element={<AdminAlerts />} />
                     <Route path="/verification" element={<AdminVerification />} />
@@ -116,6 +115,7 @@ function AdminPortal() {
           </AdminLayout>
         </div>
       </div>
+      <HawkieFloat portal="admin" />
     </RequireAuth>
   )
 }

@@ -791,6 +791,8 @@ export function DroneScene3D({ height = 480, className }: DroneScene3DProps) {
           gl.setClearColor(new THREE.Color(0, 0, 0), 0)
           gl.toneMapping = THREE.ACESFilmicToneMapping
           gl.toneMappingExposure = 1.28
+          const canvas = gl.domElement
+          canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault() }, false)
         }}
       >
         <Scene />
@@ -843,7 +845,10 @@ export function MiniDroneScene({ color, height = 80 }: { color?: string; height?
         gl={{ antialias:true, alpha:true }}
         camera={{ position:[0,1,2.5], fov:50 }}
         style={{ background:'transparent' }}
-        onCreated={({ gl })=>{ gl.setClearColor(new THREE.Color(0,0,0),0) }}
+        onCreated={({ gl })=>{
+          gl.setClearColor(new THREE.Color(0,0,0),0)
+          gl.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault() }, false)
+        }}
       >
         <ambientLight intensity={0.55}/>
         <pointLight position={[0,2,1]} intensity={1.5} color="#fff"/>
