@@ -33,6 +33,7 @@ class Order(db.Model):
     delivered_at = db.Column(db.DateTime)
     delivery_time_minutes = db.Column(db.Integer)
     notes = db.Column(db.Text)
+    patient_age = db.Column(db.Integer)                           # 1–120 inclusive
     # bcrypt hash of the 6-digit OTP — never store or return plaintext after creation
     otp_hash = db.Column(db.String(255))
     receiver_verified = db.Column(db.Boolean, default=False)
@@ -74,6 +75,7 @@ class Order(db.Model):
             'delivered_at': self.delivered_at.isoformat() + 'Z' if self.delivered_at else None,
             'delivery_time_minutes': self.delivery_time_minutes,
             'notes': self.notes,
+            'patient_age': self.patient_age,
             'receiver_verified': self.receiver_verified,
             'items': [item.to_dict() for item in (self.items or [])],
             'destination': self._destination_dict(),

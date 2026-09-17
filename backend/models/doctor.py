@@ -33,4 +33,5 @@ class Doctor(db.Model):
             'email': self.email,
             'phone': self.phone,
             'phc': self.phc_id,
+            'phc_name': self.phc.name if self.phc else None,
         }

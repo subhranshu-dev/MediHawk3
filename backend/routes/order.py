@@ -62,6 +62,14 @@ def create_order_route():
     priority = data.get('priority', '')
     latitude = data.get('latitude')
     longitude = data.get('longitude')
+    patient_age_raw = data.get('patient_age')
+    patient_age: int | None = None
+    if patient_age_raw is not None:
+        try:
+            patient_age = int(patient_age_raw)
+        except (TypeError, ValueError):
+            from utils.response import error as err_resp
+            return err_resp('INVALID_PATIENT_AGE', 'patient_age must be an integer.', 422)
 
     # Handle client-side location error signals
     loc_err = data.get('location_error')
@@ -86,6 +94,7 @@ def create_order_route():
             priority=priority,
             latitude=latitude,
             longitude=longitude,
+            patient_age=patient_age,
         )
     except OrderError as exc:
         return error(exc.code, exc.message, exc.http_status)

@@ -24,15 +24,18 @@ interface AppState {
   // Drones
   drones: Drone[]
   updateDrone: (id: string, patch: Partial<Drone>) => void
+  setDronesFromBackend: (drones: Drone[]) => void
 
   // Mission
   activeMission: Mission | null
   setActiveMission: (m: Mission | null) => void
+  setActiveMissionFromBackend: (m: Mission | null) => void
 
   // Alerts
   alerts: Alert[]
   acknowledgeAlert: (id: string) => void
   addAlert: (a: Alert) => void
+  setAlertsFromBackend: (alerts: Alert[]) => void
 
   // Telemetry
   activeTelemetry: TelemetryPoint[]
@@ -67,7 +70,9 @@ export const useStore = create<AppState>((set, _get) => ({
   setDemo: (v) => set({ isDemo: v }),
 
   orders: ORDERS,
-  addOrder: (o) => set((s) => ({ orders: [o, ...s.orders] })),
+  addOrder: (o) => set((s) => ({
+    orders: s.orders.some((ex) => ex.id === o.id) ? s.orders : [o, ...s.orders],
+  })),
   updateOrderStatus: (id, status) =>
     set((s) => ({
       orders: s.orders.map((o) =>
@@ -84,14 +89,17 @@ export const useStore = create<AppState>((set, _get) => ({
         d.id === id ? { ...d, ...patch, last_updated: new Date().toISOString() } : d
       ),
     })),
+  setDronesFromBackend: (drones) => set({ drones }),
 
   activeMission: ACTIVE_MISSION,
   setActiveMission: (m) => set({ activeMission: m }),
+  setActiveMissionFromBackend: (m) => set({ activeMission: m }),
 
   alerts: ALERTS,
   acknowledgeAlert: (id) =>
     set((s) => ({ alerts: s.alerts.map((a) => (a.id === id ? { ...a, acknowledged: true } : a)) })),
   addAlert: (a) => set((s) => ({ alerts: [a, ...s.alerts] })),
+  setAlertsFromBackend: (alerts) => set({ alerts }),
 
   activeTelemetry: generateTelemetryHistory(),
   pushTelemetry: (p) =>

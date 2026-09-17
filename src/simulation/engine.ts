@@ -68,8 +68,9 @@ function tick() {
     const updatedElapsed = activeMission.elapsed_minutes + 0.033
 
     // Update waypoints
-    const updatedWaypoints = activeMission.waypoints.map((wp) => {
-      const wpProgress = wp.index / (activeMission.waypoints.length - 1)
+    const waypoints = activeMission.waypoints ?? []
+    const updatedWaypoints = waypoints.map((wp) => {
+      const wpProgress = waypoints.length > 1 ? wp.index / (waypoints.length - 1) : 0
       if (!wp.reached && missionProgress >= wpProgress) {
         return { ...wp, reached: true, reached_at: new Date().toISOString() }
       }
@@ -136,7 +137,7 @@ function tick() {
         if (activeMission) {
           setActiveMission({
             ...activeMission,
-            events: [...activeMission.events, {
+            events: [...(activeMission.events ?? []), {
               timestamp: new Date().toISOString(),
               event: 'Obstacle detected — avoidance trajectory calculated',
               type: 'warning',

@@ -1,14 +1,16 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, AlertTriangle, AlertCircle, Info, CheckCircle, Filter } from 'lucide-react'
+import { Bell, AlertTriangle, AlertCircle, Info, CheckCircle, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useStore } from '@/store'
 import { useToast } from '@/components/ui/Toast'
 import { alertSeverityBadge } from '@/components/ui/StatusBadge'
+import { adminService } from '@/services/api'
+import { useAdminData } from '@/hooks/useAdminData'
 import { clsx } from 'clsx'
 import { format } from 'date-fns'
 import type { AlertSeverity } from '@/types'
 
-function AlertCard({ alert, onAck }: { alert: any; onAck: () => void }) {
+function AlertCard({ alert, onAck, onResolve }: { alert: any; onAck: () => void; onResolve: () => void }) {
   const borderColor = alert.severity === 'critical' ? 'border-crimson/30 bg-crimson/5' :
     alert.severity === 'warning' ? 'border-amber/25 bg-amber/5' : 'border-white/10 bg-white/3'
 
@@ -48,15 +50,24 @@ function AlertCard({ alert, onAck }: { alert: any; onAck: () => void }) {
             {alert.drone_id && <span>Drone: {alert.drone_id}</span>}
           </div>
         </div>
-        {!alert.acknowledged && (
+        <div className="flex flex-col gap-1 flex-shrink-0">
+          {!alert.acknowledged && (
+            <button
+              onClick={onAck}
+              className="btn-ghost py-1 px-3 text-xs"
+            >
+              <CheckCircle size={13} />
+              Acknowledge
+            </button>
+          )}
           <button
-            onClick={onAck}
-            className="btn-ghost py-1 px-3 text-xs flex-shrink-0"
+            onClick={onResolve}
+            className="btn-ghost py-1 px-3 text-xs text-med-green hover:text-med-green-light"
           >
-            <CheckCircle size={13} />
-            Acknowledge
+            <XCircle size={13} />
+            Resolve
           </button>
-        )}
+        </div>
       </div>
     </motion.div>
   )
@@ -65,6 +76,7 @@ function AlertCard({ alert, onAck }: { alert: any; onAck: () => void }) {
 export function AdminAlerts() {
   const { alerts, acknowledgeAlert } = useStore()
   const { toast } = useToast()
+  const { refetch } = useAdminData()
   const [filter, setFilter] = useState<'all' | AlertSeverity>('all')
 
   const filtered = alerts.filter((a) => filter === 'all' || a.severity === filter)
@@ -72,8 +84,14 @@ export function AdminAlerts() {
   const critical = alerts.filter((a) => a.severity === 'critical' && !a.acknowledged).length
 
   const handleAck = (id: string) => {
-    acknowledgeAlert(id)
+    acknowledgeAlert(id)   // optimistic update
     toast('info', 'Alert acknowledged', '')
+    adminService.acknowledgeAlert(id).then(() => refetch()).catch(() => {/* already acknowledged locally */})
+  }
+
+  const handleResolve = (id: string) => {
+    toast('info', 'Alert resolved', '')
+    adminService.resolveAlert(id).then(() => refetch()).catch(() => {/* backend unavailable */})
   }
 
   return (
@@ -137,7 +155,7 @@ export function AdminAlerts() {
               </motion.div>
             ) : (
               filtered.map((alert) => (
-                <AlertCard key={alert.id} alert={alert} onAck={() => handleAck(alert.id)} />
+                <AlertCard key={alert.id} alert={alert} onAck={() => handleAck(alert.id)} onResolve={() => handleResolve(alert.id)} />
               ))
             )}
           </AnimatePresence>

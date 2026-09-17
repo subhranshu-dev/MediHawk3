@@ -108,6 +108,7 @@ def create_order(
     priority: str,
     latitude,
     longitude,
+    patient_age: int | None = None,
 ) -> Order:
     """
     Create an order for a doctor atomically.
@@ -143,6 +144,12 @@ def create_order(
             raise OrderError('NO_ELIGIBLE_FACILITY',
                              'No operational facility found near your location.', 404)
         raise OrderError('LOCATION_UNAVAILABLE', 'Could not resolve nearest facility.', 503)
+
+    # ── Step 1b: Validate patient_age if supplied ────────────────────────────
+    if patient_age is not None:
+        if not isinstance(patient_age, int) or isinstance(patient_age, bool) or patient_age < 1 or patient_age > 120:
+            raise OrderError('INVALID_PATIENT_AGE',
+                             'Patient age must be a whole number between 1 and 120.', 422)
 
     # ── Step 2: Validate priority ─────────────────────────────────────────────
     priority_norm = str(priority).lower().strip()
@@ -208,6 +215,7 @@ def create_order(
             status='pending',
             ordered_at=now,
             created_at=now,
+            patient_age=patient_age,
         )
         db.session.add(order)
 
@@ -228,6 +236,24 @@ def create_order(
         db.session.commit()
         logger.info('Order created: id=%s doctor=%s facility=%s priority=%s items=%d',
                     order_id, doctor_id, facility.id, priority_norm, len(validated))
+
+        # Notify admins (non-blocking — failure does not affect order creation)
+        try:
+            from models.admin import Admin
+            from services.email_service import send_order_notification_to_admins
+            admin_emails = [a.email for a in Admin.query.filter_by(is_active=True).all()]
+            medicine_summary = ', '.join(f'{inv.medicine} ×{qty}' for inv, qty in validated)
+            send_order_notification_to_admins(
+                admin_emails=admin_emails,
+                order_id=order_id,
+                doctor_name=doctor_name,
+                medicine_summary=medicine_summary,
+                priority=priority_norm,
+                destination=facility.name,
+            )
+        except Exception:
+            logger.warning('Admin order notification failed for order %s', order_id)
+
         return order
 
     except InventoryError as exc:

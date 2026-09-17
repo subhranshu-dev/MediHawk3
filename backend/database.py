@@ -141,6 +141,14 @@ def _apply_migrations(db) -> None:
                 db.session.commit()
                 logger.info('Migration applied: admins.%s', col_name)
 
+    # Phase 1G: patient_age on orders
+    if 'orders' in tables:
+        order_cols_g = {c['name'] for c in inspector.get_columns('orders')}
+        if 'patient_age' not in order_cols_g:
+            db.session.execute(text('ALTER TABLE orders ADD COLUMN patient_age INTEGER'))
+            db.session.commit()
+            logger.info('Migration applied: orders.patient_age')
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s | %(message)s')

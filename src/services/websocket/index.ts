@@ -24,7 +24,7 @@ export function initWebSocket(url: string): MockSocket {
   //   etc.
 
   console.info(`[WebSocket] Demo mode — would connect to ${url}`)
-  useStore.getState().setSystemStatus({ websocket: 'connected' })
+  useStore.getState().setSystemStatus({ websocket: 'disconnected' })
 
   const handlers: Record<string, (...args: unknown[]) => void> = {}
 

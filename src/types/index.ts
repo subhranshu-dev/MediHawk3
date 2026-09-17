@@ -6,6 +6,7 @@ export interface User {
   name: string
   role: UserRole
   phc?: string
+  phc_name?: string
   email: string
   phone?: string
 }
@@ -84,6 +85,7 @@ export interface Order {
   delivered_at?: string
   delivery_time_minutes?: number
   notes?: string
+  patient_age?: number
   otp?: string
   receiver_verified?: boolean
   items?: OrderItem[]

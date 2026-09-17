@@ -193,6 +193,7 @@ export const orderService = {
     priority: string
     latitude: number
     longitude: number
+    patient_age?: number
     location_error?: string
   }): Promise<{ success: boolean; order: Record<string, unknown> }> =>
     request('/api/order', { method: 'POST', body: JSON.stringify(data) }),
@@ -297,4 +298,26 @@ export const weatherService = {
 // ─── SMS (not in Phase 1C) ────────────────────────────────────────────────────
 export const smsService = {
   send: (_phone: string, _message: string): Promise<void> => Promise.resolve(),
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+export const adminService = {
+  commandCenter: () => request('/api/admin/command-center'),
+  dashboard: () => request('/api/admin/dashboard'),
+  orders: (page = 1) => request(`/api/admin/orders?page=${page}&per_page=20`),
+  missions: () => request('/api/admin/missions'),
+  activeMission: () => request('/api/admin/missions/active'),
+  mission: (id: string) => request(`/api/admin/missions/${id}`),
+  fleet: () => request('/api/admin/fleet'),
+  alerts: (acknowledgedFilter?: boolean) => request(`/api/admin/alerts${acknowledgedFilter === false ? '?acknowledged=false' : ''}`),
+  acknowledgeAlert: (id: string) => request(`/api/admin/alerts/${id}/acknowledge`, { method: 'POST' }),
+  resolveAlert: (id: string) => request(`/api/admin/alerts/${id}/resolve`, { method: 'POST' }),
+  telemetry: (droneId: string) => request(`/api/admin/telemetry/${droneId}`),
+  readiness: (droneId: string) => request(`/api/admin/readiness/${droneId}`),
+  droneRTL: (droneId: string) => request(`/api/admin/drone/${droneId}/rtl`, { method: 'POST' }),
+  droneHold: (droneId: string) => request(`/api/admin/drone/${droneId}/hold`, { method: 'POST' }),
+  droneResume: (droneId: string) => request(`/api/admin/drone/${droneId}/resume`, { method: 'POST' }),
+  priorityQueue: () => request('/api/admin/priority-queue'),
+  analytics: () => request('/api/admin/analytics'),
+  locations: () => request('/api/admin/locations'),
 }

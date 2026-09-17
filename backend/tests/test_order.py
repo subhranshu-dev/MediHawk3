@@ -566,3 +566,55 @@ def test_order_destination_has_facility_type(seeded_app, client, auth_headers_do
     assert resp.status_code == 201
     dest = resp.get_json()['order']['destination']
     assert dest['type'] in ('phc', 'chc')
+
+
+def test_invalid_payload_422_has_error_body_no_order(seeded_app, client, auth_headers_doctor):
+    """422 response body has error.code + error.message and no 'order' key."""
+    resp = client.post('/api/order',
+                       json=make_order_payload(items=[{'medicine_id': 'inv-FAKE', 'quantity': 1}]),
+                       headers=auth_headers_doctor)
+    assert resp.status_code in (400, 422)
+    body = resp.get_json()
+    assert 'error' in body
+    assert body['error']['code']
+    assert body['error']['message']
+    assert 'order' not in body
+
+
+def test_invalid_payload_does_not_decrement_inventory(seeded_app, client, auth_headers_doctor, app):
+    """When order fails (422), no inventory must be decremented (atomic rollback)."""
+    with app.app_context():
+        qty_before = db.session.get(InventoryItem, 'inv-002').quantity
+    resp = client.post('/api/order',
+                       json=make_order_payload(items=[
+                           {'medicine_id': 'inv-002', 'quantity': 1},
+                           {'medicine_id': 'inv-FAKE', 'quantity': 1},
+                       ]),
+                       headers=auth_headers_doctor)
+    assert resp.status_code in (400, 422)
+    with app.app_context():
+        db.session.expire_all()
+        qty_after = db.session.get(InventoryItem, 'inv-002').quantity
+    assert qty_after == qty_before
+
+
+def test_valid_payload_success_contract(seeded_app, client, auth_headers_doctor):
+    """Valid payload returns success=True, server-generated MH- order ID, pending status, lowercase priority."""
+    resp = client.post('/api/order', json=make_order_payload(), headers=auth_headers_doctor)
+    assert resp.status_code == 201
+    body = resp.get_json()
+    assert body['success'] is True
+    order = body['order']
+    assert order['id'].startswith('MH-')
+    assert order['status'] == 'pending'
+    assert order['priority'] == 'urgent'
+
+
+def test_duplicate_post_creates_two_distinct_orders(seeded_app, client, auth_headers_doctor, app):
+    """Two sequential identical POSTs each create a distinct order with a different ID."""
+    payload = make_order_payload(items=[{'medicine_id': 'inv-008', 'quantity': 1}])
+    r1 = client.post('/api/order', json=payload, headers=auth_headers_doctor)
+    r2 = client.post('/api/order', json=payload, headers=auth_headers_doctor)
+    assert r1.status_code == 201
+    assert r2.status_code == 201
+    assert r1.get_json()['order']['id'] != r2.get_json()['order']['id']

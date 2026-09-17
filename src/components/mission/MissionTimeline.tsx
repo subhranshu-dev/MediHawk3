@@ -97,7 +97,7 @@ export function WaypointProgress() {
 
   return (
     <div className="flex flex-col gap-2">
-      {activeMission.waypoints.map((wp) => (
+      {(activeMission.waypoints ?? []).map((wp) => (
         <div key={wp.index} className="flex items-center gap-3">
           <div className={clsx(
             'w-5 h-5 rounded-full flex items-center justify-center border flex-shrink-0',

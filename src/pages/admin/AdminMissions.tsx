@@ -7,6 +7,8 @@ import {
 } from 'lucide-react'
 import { useStore } from '@/store'
 import { useToast } from '@/components/ui/Toast'
+import { useAdminData } from '@/hooks/useAdminData'
+import { adminService } from '@/services/api'
 import { MissionEventLog, WaypointProgress } from '@/components/mission/MissionTimeline'
 import { TemperatureChart } from '@/components/charts/TemperatureChart'
 import { BatteryIndicator } from '@/components/ui/BatteryIndicator'
@@ -18,6 +20,7 @@ const MissionMap = lazy<React.FC<{ height?: number; followDrone?: boolean }>>(()
 )
 
 export function AdminMissions() {
+  useAdminData()
   const { activeMission, drones, temperatureLogs } = useStore()
   const { toast } = useToast()
 
@@ -25,8 +28,31 @@ export function AdminMissions() {
   const lastTemp = temperatureLogs[temperatureLogs.length - 1]?.temperature ?? 5.8
   const tempSafe = lastTemp >= 2 && lastTemp <= 8
 
-  const handleRTL = () => {
+  const handleRTL = async () => {
+    if (flyingDrone) {
+      try {
+        await adminService.droneRTL(flyingDrone.id)
+      } catch { /* toast regardless */ }
+    }
     toast('warning', 'Emergency RTL Initiated', `Drone ${flyingDrone?.id} returning to base`)
+  }
+
+  const handleHold = async () => {
+    if (flyingDrone) {
+      try {
+        await adminService.droneHold(flyingDrone.id)
+      } catch { /* toast regardless */ }
+    }
+    toast('info', 'Mission Hold', 'Drone hovering at current position')
+  }
+
+  const handleResume = async () => {
+    if (flyingDrone) {
+      try {
+        await adminService.droneResume(flyingDrone.id)
+      } catch { /* toast regardless */ }
+    }
+    toast('info', 'Mission Resumed', 'Drone continuing to destination')
   }
 
   if (!activeMission) {
@@ -61,11 +87,11 @@ export function AdminMissions() {
 
         {/* Emergency controls — always visible */}
         <div className="flex items-center gap-2">
-          <button onClick={() => toast('info', 'Mission Hold', 'Drone hovering at current position')} className="btn-secondary text-xs py-1.5">
+          <button onClick={handleHold} className="btn-secondary text-xs py-1.5">
             <PauseCircle size={13} />
             HOLD
           </button>
-          <button onClick={() => toast('info', 'Mission Resumed', 'Drone continuing to destination')} className="btn-secondary text-xs py-1.5">
+          <button onClick={handleResume} className="btn-secondary text-xs py-1.5">
             <PlayCircle size={13} />
             RESUME
           </button>

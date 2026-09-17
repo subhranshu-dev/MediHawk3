@@ -1,16 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Search, History, Download, Filter } from 'lucide-react'
 import { useStore } from '@/store'
+import { orderService } from '@/services/api'
 import { orderStatusBadge, priorityBadge } from '@/components/ui/StatusBadge'
 import { clsx } from 'clsx'
 import { format } from 'date-fns'
 
 export function AdminHistory() {
-  const { orders } = useStore()
+  const { orders, addOrder } = useStore()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [priority, setPriority] = useState('all')
+
+  useEffect(() => {
+    orderService.list().then(fetched => { fetched.forEach(o => addOrder(o)) }).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = orders.filter((o) => {
     const matchStatus = status === 'all' || o.status === status

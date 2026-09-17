@@ -121,6 +121,7 @@ function QtyControl({ qty, onDec, onInc, max }: { qty: number; onDec: () => void
   return (
     <div className="flex items-center gap-1.5">
       <button
+        type="button"
         onClick={e => { e.stopPropagation(); onDec() }}
         aria-label="Decrease quantity"
         className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold transition-colors"
@@ -128,6 +129,7 @@ function QtyControl({ qty, onDec, onInc, max }: { qty: number; onDec: () => void
       >−</button>
       <span className="font-mono-data font-bold text-sm text-text-primary w-5 text-center">{qty}</span>
       <button
+        type="button"
         onClick={e => { e.stopPropagation(); onInc() }}
         aria-label="Increase quantity"
         disabled={qty >= max}
@@ -162,6 +164,7 @@ export function DoctorOrder() {
   const [otherSearch, setOtherSearch] = useState('')
   const [customItemName, setCustomItemName] = useState('')
   const [priority, setPriority] = useState<OrderPriority>('emergency')
+  const [patientAge, setPatientAge] = useState('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [orderId, setOrderId] = useState('')
@@ -267,11 +270,13 @@ export function DoctorOrder() {
     }
 
     try {
+      const ageNum = patientAge.trim() ? parseInt(patientAge.trim(), 10) : undefined
       const payload = {
         latitude,
         longitude,
         items: backendEntries.map(e => ({ medicine_id: e.id, quantity: e.qty })),
         priority,
+        ...(ageNum && ageNum >= 1 && ageNum <= 120 ? { patient_age: ageNum } : {}),
         ...(notes.trim() ? { notes: notes.trim() } : {}),
       }
       const res = await orderService.create(payload) as Record<string, unknown>
@@ -657,6 +662,24 @@ export function DoctorOrder() {
               </div>
             </div>
 
+            {/* Patient Age */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: '#7A939E' }}>Patient Age (years)</label>
+              <input
+                type="number"
+                min={1}
+                max={120}
+                value={patientAge}
+                onChange={e => setPatientAge(e.target.value)}
+                placeholder="e.g. 34"
+                className="mt-2 w-full px-4 py-2.5 rounded-[10px] text-sm text-text-primary outline-none transition-colors"
+                style={{
+                  background: 'rgba(240,245,248,0.90)',
+                  border: '1px solid rgba(50,70,78,0.12)',
+                }}
+              />
+            </div>
+
             {/* Notes */}
             <div>
               <label className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: '#7A939E' }}>Clinical Notes (optional)</label>
@@ -755,7 +778,7 @@ export function DoctorOrder() {
               </div>
             )}
 
-            <button onClick={handleSubmit} disabled={submitting} className="btn-primary w-full"
+            <button type="submit" onClick={handleSubmit} disabled={submitting} className="btn-primary w-full"
               style={{ fontSize: '0.9rem', padding: '0.8rem' }}>
               {submitting ? (
                 <span className="flex items-center gap-2">
@@ -770,7 +793,7 @@ export function DoctorOrder() {
               )}
             </button>
 
-            <button onClick={() => setStep('details')} className="btn-ghost w-full">← Go back</button>
+            <button type="button" onClick={() => setStep('details')} className="btn-ghost w-full">← Go back</button>
           </motion.div>
         )}
 
@@ -896,8 +919,11 @@ function MedItemRow({ item, selected, qty, maxQty, catColor, catBg, onAdd, onRem
         transition: 'background 180ms, border-color 180ms',
       }}
     >
-      <button
-        onClick={() => selected ? undefined : onAdd()}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => !selected && onAdd()}
+        onKeyDown={e => { if (!selected && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onAdd() } }}
         className="w-full flex items-center gap-3 px-3 py-2.5 text-left"
         aria-pressed={selected}
       >
@@ -923,7 +949,7 @@ function MedItemRow({ item, selected, qty, maxQty, catColor, catBg, onAdd, onRem
             <QtyControl qty={qty} onDec={onDec} onInc={onInc} max={maxQty} />
           </div>
         )}
-      </button>
+      </div>
     </div>
   )
 }
@@ -941,8 +967,11 @@ interface BloodItemCardProps {
 
 function BloodItemCard({ item, selected, qty, maxQty, onAdd, onDec, onInc }: BloodItemCardProps) {
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => !selected && onAdd()}
+      onKeyDown={e => { if (!selected && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onAdd() } }}
       className="flex flex-col items-center gap-2 p-3 rounded-[8px] transition-colors"
       style={{
         background: selected ? 'rgba(198,40,50,0.06)' : 'rgba(240,244,248,0.6)',
@@ -972,6 +1001,6 @@ function BloodItemCard({ item, selected, qty, maxQty, onAdd, onDec, onInc }: Blo
           <Plus size={13} style={{ color: '#C62832' }} />
         </div>
       )}
-    </button>
+    </div>
   )
 }

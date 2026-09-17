@@ -6,6 +6,7 @@ import {
   ArrowRight, Thermometer, Battery, Wifi, Clock, Activity
 } from 'lucide-react'
 import { useStore } from '@/store'
+import { useAdminData } from '@/hooks/useAdminData'
 import { orderStatusBadge, priorityBadge, droneStatusBadge, alertSeverityBadge } from '@/components/ui/StatusBadge'
 import { BatteryIndicator } from '@/components/ui/BatteryIndicator'
 import { format } from 'date-fns'
@@ -29,6 +30,7 @@ function MetricBox({ label, value, sub, accent = false }: {
 }
 
 export function AdminOverview() {
+  useAdminData()
   const { orders, drones, alerts, activeMission, temperatureLogs } = useStore()
   const navigate = useNavigate()
 
@@ -71,7 +73,7 @@ export function AdminOverview() {
                     <span className="absolute inline-flex h-full w-full rounded-full bg-crimson opacity-75 animate-ping" />
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-crimson" />
                   </span>
-                  MH-D01 · IN FLIGHT
+                  {activeMission.drone_id ?? 'Drone'} · IN FLIGHT
                 </div>
               )}
             </div>

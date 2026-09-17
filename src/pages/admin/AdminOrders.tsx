@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams } from 'react-router-dom'
 import { Search, CheckCircle2, XCircle, Eye, AlertTriangle, Loader2, ShieldCheck, Clock, Radio } from 'lucide-react'
@@ -621,14 +621,10 @@ export function AdminOrders() {
   const [inspecting, setInspecting]             = useState<Order | null>(null)
   const [expanded, setExpanded]                 = useState<string | null>(null)
 
-  // Load all orders from backend on mount
+  // Load all orders from backend on mount (addOrder is idempotent — safe to call repeatedly)
   useEffect(() => {
     orderService.list()
-      .then(fetched => {
-        fetched.forEach(o => {
-          if (!orders.find(ex => ex.id === o.id)) addOrder(o)
-        })
-      })
+      .then(fetched => { fetched.forEach(o => addOrder(o)) })
       .catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -738,9 +734,9 @@ export function AdminOrders() {
           </thead>
           <tbody>
             {filtered.map((order, i) => (
-              <>
+              <React.Fragment key={order.id}>
                 <motion.tr
-                  key={order.id}
+                  initial={{ opacity: 0 }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
@@ -839,7 +835,7 @@ export function AdminOrders() {
                     </tr>
                   )}
                 </AnimatePresence>
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

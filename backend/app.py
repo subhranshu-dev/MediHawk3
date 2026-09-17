@@ -106,6 +106,9 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(order_bp)
     app.register_blueprint(inventory_bp)
 
+    from routes.admin import admin_bp
+    app.register_blueprint(admin_bp)
+
     # Phase 1F+ blueprints registered here as phases are implemented:
     # from routes.orders import orders_bp; app.register_blueprint(orders_bp)
     # from routes.drones import drones_bp; app.register_blueprint(drones_bp)

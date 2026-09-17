@@ -149,6 +149,52 @@ def send_otp_email(to_email: str, otp_plaintext: str, role: str) -> None:
     transport.send(to_email, subject, body_text, body_html)
 
 
+def send_order_notification_to_admins(admin_emails: list[str], order_id: str, doctor_name: str,
+                                      medicine_summary: str, priority: str, destination: str) -> None:
+    """
+    Notify admins when a new order is placed.
+    Silently skips if transport is not configured or send fails.
+    Never logs sensitive order content.
+    """
+    transport = get_transport()
+    if transport is None:
+        return
+    subject = f'[MediHawk] New {priority.capitalize()} Order — {order_id}'
+    body_text = (
+        f'A new medicine delivery order has been placed.\n\n'
+        f'Order ID  : {order_id}\n'
+        f'Priority  : {priority.upper()}\n'
+        f'Doctor    : {doctor_name}\n'
+        f'Medicine  : {medicine_summary}\n'
+        f'Destination: {destination}\n\n'
+        f'Log in to MediHawk Admin Portal to review and confirm this order.'
+    )
+    body_html = (
+        f'<div style="font-family:sans-serif;max-width:560px;margin:0 auto">'
+        f'<h2 style="color:#C62832">MediHawk — New Order Received</h2>'
+        f'<table style="border-collapse:collapse;width:100%">'
+        f'<tr><td style="padding:6px 12px;color:#666;width:120px">Order ID</td>'
+        f'<td style="padding:6px 12px;font-weight:bold">{order_id}</td></tr>'
+        f'<tr style="background:#f9f9f9"><td style="padding:6px 12px;color:#666">Priority</td>'
+        f'<td style="padding:6px 12px;font-weight:bold;color:#C62832">{priority.upper()}</td></tr>'
+        f'<tr><td style="padding:6px 12px;color:#666">Doctor</td>'
+        f'<td style="padding:6px 12px">{doctor_name}</td></tr>'
+        f'<tr style="background:#f9f9f9"><td style="padding:6px 12px;color:#666">Medicine</td>'
+        f'<td style="padding:6px 12px">{medicine_summary}</td></tr>'
+        f'<tr><td style="padding:6px 12px;color:#666">Destination</td>'
+        f'<td style="padding:6px 12px">{destination}</td></tr>'
+        f'</table>'
+        f'<p style="margin-top:16px">Log in to the '
+        f'<strong>MediHawk Admin Portal</strong> to review and confirm this order.</p>'
+        f'</div>'
+    )
+    for email in admin_emails:
+        try:
+            transport.send(email, subject, body_text, body_html)
+        except Exception:
+            logger.warning('Order notification delivery failed for %s', email)
+
+
 def send_signup_verification_email(to_email: str, otp_plaintext: str, role: str) -> None:
     """
     Send email address verification OTP after signup.

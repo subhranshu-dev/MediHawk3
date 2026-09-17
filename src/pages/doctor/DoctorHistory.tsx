@@ -36,7 +36,7 @@ export function DoctorHistory() {
     <div className="flex flex-col gap-4">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-xl font-bold text-text-primary">Order History</h1>
-        <p className="text-xs text-text-secondary mt-0.5">{myOrders.length} total orders · PHC Chandaka</p>
+        <p className="text-xs text-text-secondary mt-0.5">{myOrders.length} total orders · {user?.phc_name ?? user?.phc ?? 'Your PHC'}</p>
       </motion.div>
 
       {/* Search */}

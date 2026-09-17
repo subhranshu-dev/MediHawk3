@@ -97,9 +97,9 @@ export function MissionMap({ height = 400, className, followDrone = true }: Miss
   const { drones, activeMission } = useStore()
   const flyingDrone = drones.find((d) => d.mission_id)
 
-  const routeCoords: [number, number][] = activeMission?.waypoints.map((wp) => [wp.lat, wp.lng]) ?? []
+  const routeCoords: [number, number][] = activeMission?.waypoints?.map((wp) => [wp.lat, wp.lng]) ?? []
   const completedCoords: [number, number][] = activeMission?.waypoints
-    .filter((wp) => wp.reached)
+    ?.filter((wp) => wp.reached)
     .map((wp) => [wp.lat, wp.lng]) ?? []
 
   const center: [number, number] = activeMission
@@ -148,7 +148,7 @@ export function MissionMap({ height = 400, className, followDrone = true }: Miss
         )}
 
         {/* Waypoints */}
-        {activeMission?.waypoints.slice(1, -1).map((wp) => (
+        {activeMission?.waypoints?.slice(1, -1).map((wp) => (
           <CircleMarker
             key={wp.index}
             center={[wp.lat, wp.lng]}

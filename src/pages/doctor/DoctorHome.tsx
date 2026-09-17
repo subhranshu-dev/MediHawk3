@@ -22,11 +22,7 @@ export function DoctorHome() {
 
   useEffect(() => {
     orderService.list()
-      .then(fetched => {
-        fetched.forEach(o => {
-          if (!orders.find(ex => ex.id === o.id)) addOrder(o)
-        })
-      })
+      .then(fetched => { fetched.forEach(o => addOrder(o)) })
       .catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -45,7 +41,7 @@ export function DoctorHome() {
         <h1 className="text-2xl font-bold text-text-primary mt-0.5">{user?.name}</h1>
         <div className="flex items-center gap-2 mt-1">
           <MapPin size={13} className="text-text-muted" />
-          <span className="text-xs text-text-secondary">PHC Chandaka · Khordha District</span>
+          <span className="text-xs text-text-secondary">{user?.phc_name ?? user?.phc ?? 'Your PHC'}</span>
         </div>
       </motion.div>
 
