@@ -19,6 +19,7 @@ interface AppState {
   orders: Order[]
   addOrder: (o: Order) => void
   updateOrderStatus: (id: string, status: Order['status']) => void
+  setOrdersFromBackend: (orders: Order[]) => void
 
   // Drones
   drones: Drone[]
@@ -27,8 +28,10 @@ interface AppState {
 
   // Mission
   activeMission: Mission | null
+  activeMissions: Mission[]
   setActiveMission: (m: Mission | null) => void
   setActiveMissionFromBackend: (m: Mission | null) => void
+  setActiveMissionsFromBackend: (missions: Mission[]) => void
 
   // Alerts
   alerts: Alert[]
@@ -80,6 +83,7 @@ export const useStore = create<AppState>((set, _get) => ({
           : o
       ),
     })),
+  setOrdersFromBackend: (orders) => set({ orders }),
 
   drones: [],
   updateDrone: (id, patch) =>
@@ -91,8 +95,10 @@ export const useStore = create<AppState>((set, _get) => ({
   setDronesFromBackend: (drones) => set({ drones }),
 
   activeMission: null,
+  activeMissions: [],
   setActiveMission: (m) => set({ activeMission: m }),
   setActiveMissionFromBackend: (m) => set({ activeMission: m }),
+  setActiveMissionsFromBackend: (missions) => set({ activeMissions: missions }),
 
   alerts: ALERTS,
   acknowledgeAlert: (id) =>

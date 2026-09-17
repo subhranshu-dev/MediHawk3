@@ -5,13 +5,24 @@ Does NOT expose configuration values or secrets.
 """
 import logging
 
-from flask import Blueprint, current_app, jsonify
-from sqlalchemy import text
-
+from flask import Blueprint, current_app, jsonify  # type: ignore[import-not-found]
 from extensions import db
 
 health_bp = Blueprint('health', __name__)
 logger = logging.getLogger(__name__)
+
+
+@health_bp.route('/', methods=['GET'])
+def root():
+    """Minimal root endpoint so GET / returns 200 instead of 404."""
+    mode = current_app.config.get('APP_MODE', 'simulation')
+    return jsonify({
+        'success': True,
+        'service': 'MediHawk Backend',
+        'status': 'running',
+        'mode': mode,
+        'health': '/api/health',
+    }), 200
 
 
 @health_bp.route('/api/health', methods=['GET'])
@@ -37,7 +48,7 @@ def health_check():
 def _check_database() -> str:
     """Return 'connected' or 'disconnected' based on a lightweight DB ping."""
     try:
-        db.session.execute(text('SELECT 1'))
+        db.session.connection().exec_driver_sql('SELECT 1')
         return 'connected'
     except Exception as exc:
         logger.error('Database health check failed: %s', exc)

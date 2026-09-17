@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from flask import Blueprint, g, request
+from flask import Blueprint, g, request  # type: ignore[reportMissingImports]
 
 from middleware.auth import require_admin, require_auth, require_doctor
 from services.order_service import (

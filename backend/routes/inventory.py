@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from flask import Blueprint, g, request
+from flask import Blueprint, g, request  # pyright: ignore[reportMissingImports]
 
 from extensions import db
 from middleware.auth import require_admin, require_auth
