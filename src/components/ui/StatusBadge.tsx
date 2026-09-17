@@ -66,6 +66,10 @@ export function orderStatusBadge(status: OrderStatus) {
     cancelled: { variant: 'muted', label: 'Cancelled' },
   }
   const cfg = map[status]
+  if (!cfg) {
+    if (import.meta.env.DEV) console.warn('[StatusBadge] Unknown order status:', status)
+    return <StatusBadge variant="muted" label={String(status)} />
+  }
   return <StatusBadge variant={cfg.variant} label={cfg.label} pulse={status === 'in_flight' || status === 'landing'} />
 }
 
@@ -79,16 +83,24 @@ export function droneStatusBadge(status: DroneStatus) {
     offline: { variant: 'muted', label: 'Offline' },
   }
   const cfg = map[status]
+  if (!cfg) {
+    if (import.meta.env.DEV) console.warn('[StatusBadge] Unknown drone status:', status)
+    return <StatusBadge variant="muted" label={String(status)} />
+  }
   return <StatusBadge variant={cfg.variant} label={cfg.label} pulse={status === 'in_flight'} />
 }
 
 export function priorityBadge(priority: 'emergency' | 'urgent' | 'normal') {
-  const map = {
-    emergency: { variant: 'critical' as BadgeVariant, label: 'Emergency' },
-    urgent: { variant: 'warning' as BadgeVariant, label: 'Urgent' },
-    normal: { variant: 'info' as BadgeVariant, label: 'Normal' },
+  const map: Record<string, { variant: BadgeVariant; label: string }> = {
+    emergency: { variant: 'critical', label: 'Emergency' },
+    urgent: { variant: 'warning', label: 'Urgent' },
+    normal: { variant: 'info', label: 'Normal' },
   }
   const cfg = map[priority]
+  if (!cfg) {
+    if (import.meta.env.DEV) console.warn('[StatusBadge] Unknown priority:', priority)
+    return <StatusBadge variant="muted" label={String(priority)} />
+  }
   return <StatusBadge variant={cfg.variant} label={cfg.label} />
 }
 
@@ -99,5 +111,9 @@ export function alertSeverityBadge(severity: AlertSeverity) {
     info: { variant: 'info', label: 'Info' },
   }
   const cfg = map[severity]
+  if (!cfg) {
+    if (import.meta.env.DEV) console.warn('[StatusBadge] Unknown alert severity:', severity)
+    return <StatusBadge variant="muted" label={String(severity)} />
+  }
   return <StatusBadge variant={cfg.variant} label={cfg.label} />
 }

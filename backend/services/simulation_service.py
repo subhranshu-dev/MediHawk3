@@ -289,7 +289,9 @@ def _advance_mission(mission: Mission, now: datetime) -> None:
     drone.speed = speed
     drone.battery = new_battery
     drone.temperature = new_temp
-    drone.status = phase
+    # DroneStatus contract: available|preparing|in_flight|returning|maintenance|offline
+    # 'landing' is a MissionStatus only — map it to 'in_flight' for the drone
+    drone.status = 'in_flight' if phase == 'landing' else phase
     drone.last_updated = now
 
     # ── Persist mission state ─────────────────────────────────────────────────
