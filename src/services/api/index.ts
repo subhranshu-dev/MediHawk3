@@ -1,7 +1,25 @@
 // ─── API Service Layer ─────────────────────────────────────────────────────────
 // Connected to Flask backend at BASE_URL.
+// Set VITE_API_BASE_URL in your environment to point at the Render backend.
+//   Production (Vercel): set in Vercel project → Settings → Environment Variables
+//   Development: set in .env.local at the project root (or leave unset for localhost fallback)
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
+const _rawApiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+
+// Production builds MUST have VITE_API_BASE_URL — fail fast rather than silently
+// routing all requests to localhost (which is unreachable from production browsers).
+if (import.meta.env.PROD && !_rawApiBase) {
+  throw new Error(
+    '[MediHawk] VITE_API_BASE_URL is not set. ' +
+    'All production API requests will fail. ' +
+    'Set VITE_API_BASE_URL in your Vercel project environment variables ' +
+    'to your Render backend URL (e.g. https://medihawk3.onrender.com).'
+  )
+}
+
+// DEV guard ensures Vite's dead-code elimination strips the localhost string
+// from production bundles — import.meta.env.DEV is replaced by `false` at build time.
+const BASE_URL = _rawApiBase || (import.meta.env.DEV ? 'http://localhost:5000' : '')
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 const TOKEN_KEY = 'mh_jwt'
