@@ -379,6 +379,11 @@ def _sim_advance() -> None:
         db.session.rollback()
         logger.error('_sim_advance error: %s', exc, exc_info=True)
 
+    # Ensure a demo mission is always active when simulation mode is idle
+    from flask import current_app
+    if current_app.config.get('APP_MODE') == 'simulation':
+        ensure_demo_mission()
+
 
 def ensure_demo_mission() -> None:
     """

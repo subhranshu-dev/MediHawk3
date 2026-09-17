@@ -737,7 +737,6 @@ export function AdminOrders() {
               <React.Fragment key={order.id}>
                 <motion.tr
                   initial={{ opacity: 0 }}
-                  initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
                   className="border-b border-white/4 hover:bg-white/2 transition-colors"

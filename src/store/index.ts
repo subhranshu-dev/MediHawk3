@@ -4,7 +4,6 @@ import type {
   SystemStatus, TemperatureLog, TelemetryPoint
 } from '@/types'
 import {
-  ORDERS, DRONES, ACTIVE_MISSION,
   ALERTS, SYSTEM_STATUS, generateTempLog, generateTelemetryHistory
 } from '@/data/mockData'
 
@@ -69,7 +68,7 @@ export const useStore = create<AppState>((set, _get) => ({
   },
   setDemo: (v) => set({ isDemo: v }),
 
-  orders: ORDERS,
+  orders: [],
   addOrder: (o) => set((s) => ({
     orders: s.orders.some((ex) => ex.id === o.id) ? s.orders : [o, ...s.orders],
   })),
@@ -82,7 +81,7 @@ export const useStore = create<AppState>((set, _get) => ({
       ),
     })),
 
-  drones: DRONES,
+  drones: [],
   updateDrone: (id, patch) =>
     set((s) => ({
       drones: s.drones.map((d) =>
@@ -91,7 +90,7 @@ export const useStore = create<AppState>((set, _get) => ({
     })),
   setDronesFromBackend: (drones) => set({ drones }),
 
-  activeMission: ACTIVE_MISSION,
+  activeMission: null,
   setActiveMission: (m) => set({ activeMission: m }),
   setActiveMissionFromBackend: (m) => set({ activeMission: m }),
 

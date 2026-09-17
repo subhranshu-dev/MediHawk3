@@ -1,14 +1,10 @@
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 import { BarChart3, TrendingUp, Clock, ShieldCheck, Thermometer } from 'lucide-react'
 import { DeliveryVolumeChart, SuccessRateChart } from '@/components/charts/TemperatureChart'
 import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from 'recharts'
-import { generateDailyMetrics, ORDERS } from '@/data/mockData'
-
-const PRIORITY_DATA = [
-  { name: 'Emergency', value: ORDERS.filter(o => o.priority === 'emergency').length, color: '#C62832' },
-  { name: 'Urgent', value: ORDERS.filter(o => o.priority === 'urgent').length, color: '#D98B24' },
-  { name: 'Normal', value: ORDERS.filter(o => o.priority === 'normal').length, color: '#486A7A' },
-]
+import { generateDailyMetrics } from '@/data/mockData'
+import { adminService } from '@/services/api'
 
 const AVG_TIME_DATA = generateDailyMetrics(6)
 
@@ -33,10 +29,25 @@ function MetricCard({ label, value, unit, icon: Icon, trend, color = 'text-text-
 }
 
 export function AdminAnalytics() {
+  const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null)
+  useEffect(() => {
+    adminService.analytics().then((r) => setAnalyticsData(r as Record<string, unknown>)).catch(() => {})
+  }, [])
+
+  const orderStats = (analyticsData?.order_stats ?? {}) as Record<string, unknown>
+  const fleetData = (analyticsData?.fleet ?? {}) as Record<string, unknown>
+  const priorityStats = (orderStats?.priority ?? {}) as Record<string, number>
+  const priorityData = [
+    { name: 'Emergency', value: priorityStats.emergency ?? 0, color: '#C62832' },
+    { name: 'Urgent', value: priorityStats.urgent ?? 0, color: '#D98B24' },
+    { name: 'Normal', value: priorityStats.normal ?? 0, color: '#486A7A' },
+  ]
+  const fleetDrones = (fleetData?.drones ?? []) as Array<{ id: string; name: string; total_missions: number; flight_hours: number }>
+
   const metrics = generateDailyMetrics(30)
-  const totalDeliveries = metrics.reduce((s, m) => s + m.deliveries, 0)
-  const avgTime = (metrics.reduce((s, m) => s + m.avg_time, 0) / metrics.length).toFixed(1)
-  const avgSuccess = (metrics.reduce((s, m) => s + m.success_rate, 0) / metrics.length).toFixed(1)
+  const totalDeliveries = (orderStats?.delivered as number) ?? metrics.reduce((s, m) => s + m.deliveries, 0)
+  const avgTime = (orderStats?.avg_delivery_minutes as number) ?? (metrics.reduce((s, m) => s + m.avg_time, 0) / metrics.length)
+  const avgSuccess = metrics.reduce((s, m) => s + m.success_rate, 0) / metrics.length
 
   return (
     <div className="p-5 flex flex-col gap-5 overflow-auto">
@@ -47,9 +58,9 @@ export function AdminAnalytics() {
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricCard label="Total Deliveries" value={totalDeliveries} icon={BarChart3} trend="12.4%" />
-        <MetricCard label="Avg Delivery Time" value={avgTime} unit="min" icon={Clock} color="text-med-green-light" />
-        <MetricCard label="Mission Success Rate" value={`${avgSuccess}%`} icon={ShieldCheck} color="text-med-green-light" />
+        <MetricCard label="Total Deliveries" value={totalDeliveries} icon={BarChart3} />
+        <MetricCard label="Avg Delivery Time" value={typeof avgTime === 'number' ? avgTime.toFixed(1) : avgTime} unit="min" icon={Clock} color="text-med-green-light" />
+        <MetricCard label="Mission Success Rate" value={`${typeof avgSuccess === 'number' ? avgSuccess.toFixed(1) : avgSuccess}%`} icon={ShieldCheck} color="text-med-green-light" />
         <MetricCard label="Cold-Chain Compliance" value="99.1%" icon={Thermometer} color="text-med-green-light" />
       </div>
 
@@ -101,8 +112,8 @@ export function AdminAnalytics() {
           <div className="flex items-center gap-6">
             <ResponsiveContainer width="50%" height={200}>
               <PieChart>
-                <Pie data={PRIORITY_DATA} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" paddingAngle={3}>
-                  {PRIORITY_DATA.map((entry, index) => (
+                <Pie data={priorityData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" paddingAngle={3}>
+                  {priorityData.map((entry, index) => (
                     <Cell key={index} fill={entry.color} />
                   ))}
                 </Pie>
@@ -113,7 +124,7 @@ export function AdminAnalytics() {
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-col gap-3">
-              {PRIORITY_DATA.map((d) => (
+              {priorityData.map((d) => (
                 <div key={d.name} className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: d.color }} />
                   <span className="text-xs text-text-secondary">{d.name}</span>
@@ -129,24 +140,20 @@ export function AdminAnalytics() {
       <div className="panel p-5">
         <h3 className="text-sm font-semibold text-text-primary mb-4">Fleet Utilization</h3>
         <div className="grid grid-cols-4 gap-4">
-          {[
-            { drone: 'MH-D01 Hawk Alpha', missions: 187, hours: 312, util: 78 },
-            { drone: 'MH-D02 Hawk Beta', missions: 143, hours: 241, util: 62 },
-            { drone: 'MH-D03 Hawk Gamma', missions: 98, hours: 178, util: 45 },
-            { drone: 'MH-D04 Hawk Delta', missions: 221, hours: 398, util: 32 },
-          ].map((d) => (
-            <div key={d.drone} className="flex flex-col gap-2">
-              <p className="text-xs font-medium text-text-primary">{d.drone}</p>
-              <div className="text-xs text-text-muted">{d.missions} missions · {d.hours}h</div>
-              <div className="relative h-1.5 rounded bg-white/10 overflow-hidden">
-                <div
-                  className="absolute inset-y-0 left-0 rounded bg-crimson"
-                  style={{ width: `${d.util}%` }}
-                />
+          {fleetDrones.map((d) => {
+            const maxMissions = Math.max(...fleetDrones.map(x => x.total_missions), 1)
+            const util = Math.round((d.total_missions / maxMissions) * 100)
+            return (
+              <div key={d.id} className="flex flex-col gap-2">
+                <p className="text-xs font-medium text-text-primary">{d.name}</p>
+                <div className="text-xs text-text-muted">{d.total_missions} missions · {Math.round(d.flight_hours)}h</div>
+                <div className="relative h-1.5 rounded bg-white/10 overflow-hidden">
+                  <div className="absolute inset-y-0 left-0 rounded bg-crimson" style={{ width: `${util}%` }} />
+                </div>
+                <span className="font-mono-data text-2xs text-text-muted">{util}% utilized</span>
               </div>
-              <span className="font-mono-data text-2xs text-text-muted">{d.util}% utilized</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

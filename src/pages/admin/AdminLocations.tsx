@@ -1,13 +1,33 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { MapPin, Phone, User } from 'lucide-react'
-import { LOCATIONS } from '@/data/mockData'
 import { clsx } from 'clsx'
+import { adminService } from '@/services/api'
+
+interface BackendLocation {
+  id: string
+  name: string
+  type: 'hub' | 'phc' | 'chc'
+  district: string
+  address: string
+  contact: string
+  doctor: string | null
+  lat: number
+  lng: number
+  is_active: boolean
+}
 
 export function AdminLocations() {
-  const hubs = LOCATIONS.filter(l => l.type === 'hub')
-  const phcs = LOCATIONS.filter(l => l.type === 'phc')
-  const chcs = LOCATIONS.filter(l => l.type === 'chc')
+  const [locations, setLocations] = useState<BackendLocation[]>([])
+  useEffect(() => {
+    adminService.locations().then((r) => {
+      const data = r as { locations?: BackendLocation[] }
+      setLocations(data.locations ?? [])
+    }).catch(() => {})
+  }, [])
+  const hubs = locations.filter(l => l.type === 'hub')
+  const phcs = locations.filter(l => l.type === 'phc')
+  const chcs = locations.filter(l => l.type === 'chc')
 
   const typeConfig = {
     hub: { label: 'Main Hub', color: 'text-med-green-light bg-med-green/10 border-med-green/25', dot: 'bg-med-green' },
@@ -38,7 +58,7 @@ export function AdminLocations() {
 
       {/* Location cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {LOCATIONS.map((loc, i) => {
+        {locations.map((loc, i) => {
           const cfg = typeConfig[loc.type]
           return (
             <motion.div

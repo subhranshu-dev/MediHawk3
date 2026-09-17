@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion'
 import { Archive, AlertTriangle, TrendingDown, CheckCircle } from 'lucide-react'
-import { INVENTORY } from '@/data/mockData'
 import { clsx } from 'clsx'
+import { useState, useEffect } from 'react'
+import { inventoryService, type BackendInventoryItem } from '@/services/api'
 
 function StatusCell({ status }: { status: string }) {
   const cfg = {
@@ -19,8 +20,12 @@ function StatusCell({ status }: { status: string }) {
 }
 
 export function AdminInventory() {
-  const critical = INVENTORY.filter(i => i.status === 'critical' || i.status === 'low_stock')
-  const expiring = INVENTORY.filter(i => i.status === 'expiring')
+  const [inventory, setInventory] = useState<BackendInventoryItem[]>([])
+  useEffect(() => {
+    inventoryService.list().then(setInventory).catch(() => {})
+  }, [])
+  const critical = inventory.filter(i => i.status === 'critical' || i.status === 'low_stock')
+  const expiring = inventory.filter(i => i.status === 'expiring')
 
   return (
     <div className="flex flex-col h-full">
@@ -31,7 +36,7 @@ export function AdminInventory() {
             <Archive size={18} className="text-text-secondary" />
             <div>
               <h1 className="text-lg font-bold text-text-primary">Medical Inventory</h1>
-              <p className="text-xs text-text-secondary">{INVENTORY.length} items · MediHawk Central Hub</p>
+              <p className="text-xs text-text-secondary">{inventory.length} items · MediHawk Central Hub</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -78,7 +83,7 @@ export function AdminInventory() {
             </tr>
           </thead>
           <tbody>
-            {INVENTORY.map((item, i) => (
+            {inventory.map((item, i) => (
               <motion.tr
                 key={item.id}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
