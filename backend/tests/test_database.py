@@ -36,9 +36,15 @@ def test_all_expected_tables_created(app):
 
 
 def test_foreign_keys_pragma_enabled(app):
-    """SQLite foreign_keys pragma must be ON (set in create_app event listener)."""
-    result = db.session.execute(text('PRAGMA foreign_keys')).scalar()
-    assert result == 1, 'SQLite foreign_keys pragma is OFF — FK constraints will not be enforced.'
+    """
+    SQLite: foreign_keys pragma must be ON (set in create_app event listener).
+    PostgreSQL: skipped — FK enforcement is always on by default.
+    """
+    dialect = db.engine.dialect.name
+    if dialect == 'sqlite':
+        result = db.session.execute(text('PRAGMA foreign_keys')).scalar()
+        assert result == 1, 'SQLite foreign_keys pragma is OFF — FK constraints will not be enforced.'
+    # PostgreSQL always enforces FKs; no PRAGMA needed or available.
 
 
 def test_location_crud(app):

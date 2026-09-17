@@ -1,0 +1,65 @@
+##
+## MediHawk — Render Blueprint
+##
+## Provisions:
+##   medihawk-api      — Flask/Gunicorn backend (Web Service)
+##   medihawk-postgres — Managed PostgreSQL database
+##
+## Frontend (React/Vite) is deployed separately on Vercel.
+##
+## BEFORE deploying:
+##   1. Set all secret environment variables marked sync=false in the Render dashboard.
+##   2. After first deploy, set CORS_ORIGINS to your Vercel frontend URL.
+##   3. For demo deployments, set SEED_DEMO_DATA=true for one deploy, then revert.
+##
+## DO NOT commit real secrets — all sensitive values must be set via Render dashboard.
+
+services:
+  - type: web
+    name: medihawk-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter          # upgrade to standard for production workloads
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: APP_MODE
+        value: simulation
+      - key: LOG_LEVEL
+        value: INFO
+      - key: GUNICORN_WORKERS
+        value: "2"
+      - key: SEED_DEMO_DATA
+        value: "false"
+      # DATABASE_URL is auto-injected by Render when linked to medihawk-postgres
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medihawk-postgres
+          property: connectionString
+      # Set these in the Render dashboard — never commit real values:
+      - key: SECRET_KEY
+        sync: false        # set in dashboard
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: OTP_HMAC_SECRET
+        sync: false
+      - key: ADMIN_INVITE_CODE
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false        # set to your Vercel frontend URL
+      # Optional — leave blank to disable email in initial deployments:
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+    healthCheckPath: /api/health
+
+databases:
+  - name: medihawk-postgres
+    plan: starter          # upgrade to standard for production workloads
+    databaseName: medihawk
+    user: medihawk

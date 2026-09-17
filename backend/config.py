@@ -1,11 +1,56 @@
 """
 Configuration classes for MediHawk backend.
 Uses environment variables via python-dotenv. Never hard-code secrets here.
+
+Database resolution priority:
+  TESTING        → sqlite:///:memory:
+  DATABASE_URL   → PostgreSQL (or other URL provided)
+  DATABASE_PATH  → SQLite (development fallback)
+
+Production REQUIRES DATABASE_URL to be a PostgreSQL URL.
+Render provides DATABASE_URL automatically.
 """
 import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
+
+
+def _normalise_db_url(url: str) -> str:
+    """
+    Normalize a PostgreSQL connection URL for SQLAlchemy + psycopg3:
+      - postgres://      → postgresql+psycopg://  (Render/Heroku legacy prefix)
+      - postgresql://    → postgresql+psycopg://  (standard prefix, add psycopg3 driver)
+      - postgresql+psycopg://  → unchanged (already correct)
+    psycopg (psycopg3) is the only PostgreSQL driver in requirements.txt.
+    """
+    if url.startswith('postgresql+'):
+        return url  # already has driver specifier
+    if url.startswith('postgres://'):
+        return 'postgresql+psycopg' + url[len('postgres'):]
+    if url.startswith('postgresql://'):
+        return 'postgresql+psycopg' + url[len('postgresql'):]
+    return url
+
+
+def _resolve_db_uri() -> str:
+    """
+    Compute SQLALCHEMY_DATABASE_URI at module-load time.
+
+    Priority:
+      1. DATABASE_URL env var (present in production / CI)
+      2. DATABASE_PATH env var → SQLite file
+      3. Hardcoded SQLite path relative to BASE_DIR
+    """
+    raw = os.environ.get('DATABASE_URL', '')
+    if raw:
+        return _normalise_db_url(raw)
+    db_path = os.environ.get('DATABASE_PATH', str(BASE_DIR / 'instance' / 'medihawk.db'))
+    return f'sqlite:///{db_path}'
+
+
+# Compute once at import time so subclasses can reference it
+_DEFAULT_DB_URI: str = _resolve_db_uri()
 
 
 class BaseConfig:
@@ -15,13 +60,33 @@ class BaseConfig:
     JWT_EXPIRY_HOURS: int = int(os.environ.get('JWT_EXPIRY_HOURS', '8'))
 
     # ── Database ──────────────────────────────────────────────────────────────
-    _db_path = os.environ.get('DATABASE_PATH', str(BASE_DIR / 'instance' / 'medihawk.db'))
-    SQLALCHEMY_DATABASE_URI: str = f'sqlite:///{_db_path}'
+    SQLALCHEMY_DATABASE_URI: str = _DEFAULT_DB_URI
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
+
+    # Connection pool settings — configurable for Render / multi-worker deployments.
+    # SQLite ignores pool settings; they only apply to PostgreSQL.
+    DB_POOL_SIZE: int = int(os.environ.get('DB_POOL_SIZE', '5'))
+    DB_MAX_OVERFLOW: int = int(os.environ.get('DB_MAX_OVERFLOW', '10'))
+    DB_POOL_TIMEOUT: int = int(os.environ.get('DB_POOL_TIMEOUT', '30'))
+    DB_POOL_RECYCLE: int = int(os.environ.get('DB_POOL_RECYCLE', '1800'))
+
+    # Build SQLALCHEMY_ENGINE_OPTIONS for PostgreSQL; SQLite uses NullPool / StaticPool.
+    @classmethod
+    def get_engine_options(cls) -> dict:
+        uri = cls.SQLALCHEMY_DATABASE_URI
+        if uri.startswith('postgresql'):
+            return {
+                'pool_pre_ping': True,
+                'pool_size': cls.DB_POOL_SIZE,
+                'max_overflow': cls.DB_MAX_OVERFLOW,
+                'pool_timeout': cls.DB_POOL_TIMEOUT,
+                'pool_recycle': cls.DB_POOL_RECYCLE,
+            }
+        # SQLite: no pool settings needed
+        return {}
 
     # ── Application mode boundary ─────────────────────────────────────────────
     # 'simulation' = demo mode, no real hardware. 'live' = real drone (Phase 2+).
-    # Real MAVProxy commands must never execute unless APP_MODE == 'live'.
     APP_MODE: str = os.environ.get('APP_MODE', 'simulation')
 
     # ── CORS ──────────────────────────────────────────────────────────────────
@@ -49,13 +114,16 @@ class BaseConfig:
     SMTP_USE_TLS: bool = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
 
     # ── Admin signup (invite-code controlled) ─────────────────────────────────
-    # Must be set to a strong random value in production.
-    # Empty string disables admin self-registration entirely.
     ADMIN_INVITE_CODE: str = os.environ.get('ADMIN_INVITE_CODE', '')
 
     # ── Password policy ───────────────────────────────────────────────────────
     PASSWORD_MIN_LENGTH: int = int(os.environ.get('PASSWORD_MIN_LENGTH', '8'))
     PASSWORD_RESET_EXPIRY_MINUTES: int = int(os.environ.get('PASSWORD_RESET_EXPIRY_MINUTES', '15'))
+
+    # ── Seed control ──────────────────────────────────────────────────────────
+    # Set SEED_DEMO_DATA=true to insert development users/drones/locations on startup.
+    # Default: false — production starts with an empty schema.
+    SEED_DEMO_DATA: bool = os.environ.get('SEED_DEMO_DATA', 'false').lower() == 'true'
 
     # ── Logging ───────────────────────────────────────────────────────────────
     LOG_LEVEL: str = os.environ.get('LOG_LEVEL', 'INFO')
@@ -68,9 +136,26 @@ class DevelopmentConfig(BaseConfig):
 
 class TestingConfig(BaseConfig):
     TESTING: bool = True
-    # In-memory DB for tests — never touches the real database file
-    SQLALCHEMY_DATABASE_URI: str = 'sqlite:///:memory:'
+    # Default: in-memory SQLite. Override: set TEST_DATABASE_URL to a postgresql:// URI.
+    # The env var is read at class-definition time (module import) so Flask-SQLAlchemy's
+    # eager engine creation in init_app() picks up the correct URL.
+    SQLALCHEMY_DATABASE_URI: str = (
+        _normalise_db_url(os.environ.get('TEST_DATABASE_URL', ''))
+        or 'sqlite:///:memory:'
+    )
     APP_MODE: str = 'testing'
+
+    @classmethod
+    def get_engine_options(cls) -> dict:
+        """
+        Use NullPool for PostgreSQL tests: each fixture creates a new engine per test,
+        so pooled connections accumulate and exhaust PostgreSQL's max_connections.
+        NullPool opens and closes connections immediately — no pooling, no exhaustion.
+        """
+        if cls.SQLALCHEMY_DATABASE_URI.startswith('postgresql'):
+            from sqlalchemy.pool import NullPool  # pyright: ignore[reportMissingImports]
+            return {'pool_pre_ping': True, 'poolclass': NullPool}
+        return {}
     # Stable secrets so tests are deterministic
     SECRET_KEY: str = 'test-secret-not-for-production'
     JWT_SECRET_KEY: str = 'test-jwt-secret-not-for-production'
@@ -81,20 +166,9 @@ class TestingConfig(BaseConfig):
 
 class ProductionConfig(BaseConfig):
     DEBUG: bool = False
-
-    @property
-    def SECRET_KEY(self) -> str:  # type: ignore[override]
-        key = os.environ.get('SECRET_KEY')
-        if not key:
-            raise RuntimeError('SECRET_KEY environment variable must be set in production.')
-        return key
-
-    @property
-    def JWT_SECRET_KEY(self) -> str:  # type: ignore[override]
-        key = os.environ.get('JWT_SECRET_KEY')
-        if not key:
-            raise RuntimeError('JWT_SECRET_KEY environment variable must be set in production.')
-        return key
+    # DATABASE_URL is validated at startup in create_app().
+    # The URI is already computed via _DEFAULT_DB_URI (inherited from BaseConfig).
+    # If DATABASE_URL is absent, startup raises RuntimeError.
 
 
 _CONFIG_MAP: dict[str, type[BaseConfig]] = {

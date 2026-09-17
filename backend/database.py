@@ -42,21 +42,46 @@ def init_db(seed: bool = False) -> None:
             logger.info('Tip: run with --seed to insert development data.')
 
 
+# ── Dialect helpers ───────────────────────────────────────────────────────────
+
+def _dialect(db) -> str:
+    """Return the database dialect name: 'sqlite' | 'postgresql' | ..."""
+    return db.engine.dialect.name
+
+
+def _bool_default(dialect_name: str, value: bool) -> str:
+    """Return SQL DEFAULT fragment for a BOOLEAN column."""
+    if dialect_name == 'postgresql':
+        return 'DEFAULT TRUE' if value else 'DEFAULT FALSE'
+    return 'DEFAULT 1' if value else 'DEFAULT 0'
+
+
+def _datetime_type(dialect_name: str) -> str:
+    """Return SQL type for a timestamp/datetime column."""
+    if dialect_name == 'postgresql':
+        return 'TIMESTAMP WITH TIME ZONE'
+    return 'DATETIME'
+
+
 def _apply_migrations(db) -> None:
     """
     Apply incremental schema changes to existing databases without dropping data.
     Safe to call multiple times (checks before altering).
+
+    Migrations are dialect-aware: boolean defaults and datetime types use
+    correct syntax for both SQLite and PostgreSQL.
     """
     from sqlalchemy import inspect, text
 
     inspector = inspect(db.engine)
     tables = set(inspector.get_table_names())
+    d = _dialect(db)
 
     # Phase 1B: locations.is_active
     if 'locations' in tables:
         if 'is_active' not in {c['name'] for c in inspector.get_columns('locations')}:
             db.session.execute(
-                text('ALTER TABLE locations ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1')
+                text(f'ALTER TABLE locations ADD COLUMN is_active BOOLEAN NOT NULL {_bool_default(d, True)}')
             )
             db.session.commit()
             logger.info('Migration applied: locations.is_active')
@@ -65,7 +90,7 @@ def _apply_migrations(db) -> None:
     if 'inventory' in tables:
         if 'is_active' not in {c['name'] for c in inspector.get_columns('inventory')}:
             db.session.execute(
-                text('ALTER TABLE inventory ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1')
+                text(f'ALTER TABLE inventory ADD COLUMN is_active BOOLEAN NOT NULL {_bool_default(d, True)}')
             )
             db.session.commit()
             logger.info('Migration applied: inventory.is_active')
@@ -73,71 +98,63 @@ def _apply_migrations(db) -> None:
     # Phase 1C: orders snapshot columns
     if 'orders' in tables:
         order_cols = {c['name'] for c in inspector.get_columns('orders')}
-        for col_def in [
-            ('dest_lat', 'REAL'),
-            ('dest_lng', 'REAL'),
-            ('distance_km', 'REAL'),
-        ]:
-            col_name, col_type = col_def
+        for col_name in ['dest_lat', 'dest_lng', 'distance_km']:
             if col_name not in order_cols:
-                db.session.execute(text(f'ALTER TABLE orders ADD COLUMN {col_name} {col_type}'))
+                db.session.execute(text(f'ALTER TABLE orders ADD COLUMN {col_name} REAL'))
                 db.session.commit()
                 logger.info('Migration applied: orders.%s', col_name)
 
     # Phase 1C: order_items audit columns
     if 'order_items' in tables:
         item_cols = {c['name'] for c in inspector.get_columns('order_items')}
-        for col_def in [
-            ('inventory_id', 'TEXT'),
-            ('temperature_required', 'TEXT'),
-        ]:
-            col_name, col_type = col_def
+        for col_name in ['inventory_id', 'temperature_required']:
             if col_name not in item_cols:
-                db.session.execute(text(f'ALTER TABLE order_items ADD COLUMN {col_name} {col_type}'))
+                db.session.execute(text(f'ALTER TABLE order_items ADD COLUMN {col_name} TEXT'))
                 db.session.commit()
                 logger.info('Migration applied: order_items.%s', col_name)
 
     # Phase 1E: otp_sessions rate-limit + attempt columns
     if 'otp_sessions' in tables:
         otp_cols = {c['name'] for c in inspector.get_columns('otp_sessions')}
-        for col_name, col_type, default in [
-            ('attempts', 'INTEGER NOT NULL', 'DEFAULT 0'),
-            ('consumed_at', 'DATETIME', ''),
-            ('request_count', 'INTEGER NOT NULL', 'DEFAULT 1'),
-            ('last_request_at', 'DATETIME', ''),
-            ('user_id', 'TEXT', ''),
+        ts = _datetime_type(d)
+        for col_name, col_ddl in [
+            ('attempts',        f'INTEGER NOT NULL DEFAULT 0'),
+            ('consumed_at',     f'{ts}'),
+            ('request_count',   f'INTEGER NOT NULL DEFAULT 1'),
+            ('last_request_at', f'{ts}'),
+            ('user_id',         'TEXT'),
         ]:
             if col_name not in otp_cols:
-                ddl = f'ALTER TABLE otp_sessions ADD COLUMN {col_name} {col_type} {default}'.strip()
-                db.session.execute(text(ddl))
+                db.session.execute(text(f'ALTER TABLE otp_sessions ADD COLUMN {col_name} {col_ddl}'))
                 db.session.commit()
                 logger.info('Migration applied: otp_sessions.%s', col_name)
 
-    # Phase 1E security: doctor/admin account status columns
+    # Phase 1E security: doctor account status columns
     if 'doctors' in tables:
         doc_cols = {c['name'] for c in inspector.get_columns('doctors')}
-        for col_name, col_type, default in [
-            ('is_active', 'BOOLEAN NOT NULL', 'DEFAULT 1'),
-            ('email_verified', 'BOOLEAN NOT NULL', 'DEFAULT 1'),
-            ('updated_at', 'DATETIME', ''),
-            ('last_login_at', 'DATETIME', ''),
+        ts = _datetime_type(d)
+        for col_name, col_ddl in [
+            ('is_active',      f'BOOLEAN NOT NULL {_bool_default(d, True)}'),
+            ('email_verified', f'BOOLEAN NOT NULL {_bool_default(d, True)}'),
+            ('updated_at',     f'{ts}'),
+            ('last_login_at',  f'{ts}'),
         ]:
             if col_name not in doc_cols:
-                ddl = f'ALTER TABLE doctors ADD COLUMN {col_name} {col_type} {default}'.strip()
-                db.session.execute(text(ddl))
+                db.session.execute(text(f'ALTER TABLE doctors ADD COLUMN {col_name} {col_ddl}'))
                 db.session.commit()
                 logger.info('Migration applied: doctors.%s', col_name)
 
+    # Phase 1E security: admin account status columns
     if 'admins' in tables:
         adm_cols = {c['name'] for c in inspector.get_columns('admins')}
-        for col_name, col_type, default in [
-            ('is_active', 'BOOLEAN NOT NULL', 'DEFAULT 1'),
-            ('updated_at', 'DATETIME', ''),
-            ('last_login_at', 'DATETIME', ''),
+        ts = _datetime_type(d)
+        for col_name, col_ddl in [
+            ('is_active',   f'BOOLEAN NOT NULL {_bool_default(d, True)}'),
+            ('updated_at',  f'{ts}'),
+            ('last_login_at', f'{ts}'),
         ]:
             if col_name not in adm_cols:
-                ddl = f'ALTER TABLE admins ADD COLUMN {col_name} {col_type} {default}'.strip()
-                db.session.execute(text(ddl))
+                db.session.execute(text(f'ALTER TABLE admins ADD COLUMN {col_name} {col_ddl}'))
                 db.session.commit()
                 logger.info('Migration applied: admins.%s', col_name)
 

@@ -165,7 +165,9 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('error',{}\\).get\\('code','?'\\)\\)\")",
       "Bash(curl -s -X POST http://127.0.0.1:5000/api/auth/admin/signup -H 'Content-Type: application/json' -d '{\"name\":\"Test\",\"email\":\"x@x.com\",\"password\":\"Pass1234\",\"invite_code\":\"wrong\"}')",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('SUCCESS' if d.get\\('token'\\) else d.get\\('error',{}\\).get\\('code','FAIL'\\), '| role:', d.get\\('user',{}\\).get\\('role','N/A'\\)\\)\")",
-      "Bash(echo \"PID: $!\")"
+      "Bash(echo \"PID: $!\")",
+      "Bash(docker stop *)",
+      "Bash(docker rm *)"
     ],
     "additionalDirectories": [
       "/tmp"

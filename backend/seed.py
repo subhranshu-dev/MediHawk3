@@ -245,9 +245,25 @@ _DRONES = [
 
 def run_seed(app=None) -> None:
     """
-    Insert development seed data. Safe to call inside an existing app context
-    or with an explicit app argument.
+    Insert development/simulation seed data.
+
+    Safe to call inside an existing app context or with an explicit app argument.
+
+    Production guard: if FLASK_ENV=production and SEED_DEMO_DATA is not
+    explicitly 'true', this function raises RuntimeError to prevent
+    development users and passwords from being loaded into a live database.
+
+    Set SEED_DEMO_DATA=true explicitly to seed a demo production deployment.
     """
+    import os
+    flask_env = os.environ.get('FLASK_ENV', 'development')
+    seed_flag = os.environ.get('SEED_DEMO_DATA', 'false').lower()
+
+    if flask_env == 'production' and seed_flag != 'true':
+        raise RuntimeError(
+            'Refusing to seed development data into a production database. '
+            'Set SEED_DEMO_DATA=true explicitly to allow seeding in production.'
+        )
     from extensions import db
     from models.location import Location
     from models.doctor import Doctor

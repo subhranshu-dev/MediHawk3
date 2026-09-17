@@ -1,0 +1,84 @@
+##
+## MediHawk — Docker Compose for local development and deployment rehearsal.
+##
+## Architecture mirrors Render production:
+##   backend  = Flask/Gunicorn (Render Web Service)
+##   postgres = PostgreSQL     (Render PostgreSQL)
+##
+## Frontend (React/Vite) is served by Vercel in production.
+## For local dev, run `npm run dev` separately.
+##
+## Usage:
+##   docker compose up --build
+##   docker compose down -v   (destroys DB volume)
+##
+## Set environment variables in .env.prod (never commit real values).
+## Example: cp backend/.env.example .env.prod && edit .env.prod
+
+version: "3.9"
+
+services:
+  # ── PostgreSQL database ────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: medihawk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-medihawk}
+      POSTGRES_USER: ${POSTGRES_USER:-medihawk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - medihawk-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-medihawk}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    ports:
+      - "5432:5432"   # exposed for local psql / tooling access
+
+  # ── Flask/Gunicorn backend ─────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medihawk-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      JWT_EXPIRY_HOURS: ${JWT_EXPIRY_HOURS:-8}
+      APP_MODE: ${APP_MODE:-simulation}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:?OTP_HMAC_SECRET must be set}
+      OTP_EXPIRY_SECONDS: ${OTP_EXPIRY_SECONDS:-300}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-MediHawk}
+      ADMIN_INVITE_CODE: ${ADMIN_INVITE_CODE:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      # DATABASE_URL is constructed from the postgres service credentials.
+      # On Render, this variable is provided automatically by the managed PostgreSQL add-on.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-medihawk}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-medihawk}
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  medihawk-pgdata:
+    driver: local

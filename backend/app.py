@@ -26,21 +26,68 @@ from utils.logging_config import configure_logging
 logger = logging.getLogger(__name__)
 
 
+def _db_label(uri: str) -> str:
+    """Return a safe log label for a database URI — never exposes credentials."""
+    if uri.startswith('postgresql'):
+        return 'postgresql'
+    if uri.startswith('sqlite'):
+        # Log only the filename, not the full path (which may contain user dirs)
+        import re
+        m = re.search(r'sqlite:///(.+)', uri)
+        if m:
+            return 'sqlite:' + os.path.basename(m.group(1))
+        return 'sqlite'
+    return uri.split('://')[0] if '://' in uri else 'unknown'
+
+
+def _validate_production_secrets(app: Flask) -> None:
+    """Raise RuntimeError if any required production secret is missing."""
+    missing = []
+    if not os.environ.get('SECRET_KEY'):
+        missing.append('SECRET_KEY')
+    if not os.environ.get('JWT_SECRET_KEY'):
+        missing.append('JWT_SECRET_KEY')
+    if not os.environ.get('OTP_HMAC_SECRET'):
+        missing.append('OTP_HMAC_SECRET')
+    if missing:
+        raise RuntimeError(
+            f'Production requires these environment variables to be set: {", ".join(missing)}'
+        )
+
+
 def create_app(env: str | None = None) -> Flask:
     """
     Application factory.
     :param env: 'development' | 'testing' | 'production'. Defaults to FLASK_ENV.
     """
+    resolved_env = env or os.environ.get('FLASK_ENV', 'development')
     app = Flask(__name__, instance_relative_config=True)
 
     # ── Configuration ─────────────────────────────────────────────────────────
-    app.config.from_object(get_config(env))
+    cfg_class = get_config(env)
+    app.config.from_object(cfg_class)
+
+    # Apply engine options from the config class (pool settings for PostgreSQL)
+    engine_opts = cfg_class.get_engine_options()
+    if engine_opts:
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = engine_opts
 
     # ── Instance folder (holds SQLite DB file in non-test envs) ───────────────
     os.makedirs(app.instance_path, exist_ok=True)
 
     # ── Logging ───────────────────────────────────────────────────────────────
     configure_logging(app)
+
+    # ── Production validation ─────────────────────────────────────────────────
+    if resolved_env == 'production':
+        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if not db_uri or not db_uri.startswith('postgresql'):
+            raise RuntimeError(
+                'DATABASE_URL must be set to a PostgreSQL URL in production. '
+                'Render provides this automatically. '
+                'SQLite is not permitted in production.'
+            )
+        _validate_production_secrets(app)
 
     # ── Extensions ────────────────────────────────────────────────────────────
     db.init_app(app)
@@ -51,7 +98,9 @@ def create_app(env: str | None = None) -> Flask:
     )
 
     # ── SQLite: enforce foreign keys on every new connection ──────────────────
-    # SQLite does not enforce FKs by default. PRAGMA must be set per-connection.
+    # PostgreSQL enforces foreign keys natively; this PRAGMA is SQLite-only.
+    # The isinstance check ensures we never execute SQLite PRAGMAs against
+    # a PostgreSQL connection.
     @event.listens_for(Engine, 'connect')
     def _set_sqlite_pragma(dbapi_connection, connection_record):
         if isinstance(dbapi_connection, sqlite3.Connection):
@@ -72,11 +121,12 @@ def create_app(env: str | None = None) -> Flask:
     # ── Startup log + auto-migration ─────────────────────────────────────────
     with app.app_context():
         mode = app.config.get('APP_MODE', 'simulation')
-        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        logger.info('MediHawk Backend starting | mode=%s | db=%s', mode, db_uri)
+        # Log dialect only — never log the full URI (may contain credentials)
+        db_label = _db_label(app.config.get('SQLALCHEMY_DATABASE_URI', ''))
+        logger.info('MediHawk Backend starting | env=%s | mode=%s | db=%s',
+                    resolved_env, mode, db_label)
 
-        # Auto-apply schema migrations on every startup (idempotent — safe to run repeatedly).
-        # This ensures columns added in later phases are always present without manual steps.
+        # Auto-apply schema migrations on every startup (idempotent).
         if not app.config.get('TESTING'):
             try:
                 from database import _apply_migrations
@@ -108,12 +158,3 @@ def _register_blueprints(app: Flask) -> None:
 
     from routes.admin import admin_bp
     app.register_blueprint(admin_bp)
-
-    # Phase 1F+ blueprints registered here as phases are implemented:
-    # from routes.orders import orders_bp; app.register_blueprint(orders_bp)
-    # from routes.drones import drones_bp; app.register_blueprint(drones_bp)
-    # from routes.inventory import inventory_bp; app.register_blueprint(inventory_bp)
-    # from routes.locations import locations_bp; app.register_blueprint(locations_bp)
-    # from routes.temperature import temperature_bp; app.register_blueprint(temperature_bp)
-    # from routes.weather import weather_bp; app.register_blueprint(weather_bp)
-    # from routes.analytics import analytics_bp; app.register_blueprint(analytics_bp)

@@ -109,14 +109,18 @@ def reserve_items_atomic(items: list[tuple[str, int]]) -> None:
         SET quantity = quantity - :qty
         WHERE id = :id
           AND quantity >= :qty
-          AND is_active = 1
+          AND is_active = :active
+
+    :active is bound as a Python bool (True); SQLAlchemy translates to the
+    correct literal for the active dialect (1 for SQLite, TRUE for PostgreSQL).
 
     If ANY item's UPDATE does not affect exactly 1 row, raises InventoryError.
     The session is NOT committed — the caller must commit or rollback.
 
-    This pattern is safe under concurrent requests because SQLite serialises
-    writes and the WHERE guard prevents double-spend even when two requests
-    pass the initial read-based validation simultaneously.
+    Under SQLite this pattern is safe because SQLite serialises writes.
+    Under PostgreSQL, the UPDATE is atomic at the row level; the WHERE guard
+    prevents double-spend even when two requests pass the initial read-based
+    validation simultaneously.
     """
     for item_id, qty in items:
         result = db.session.execute(
@@ -125,9 +129,9 @@ def reserve_items_atomic(items: list[tuple[str, int]]) -> None:
                 'SET quantity = quantity - :qty '
                 'WHERE id = :id '
                 '  AND quantity >= :qty '
-                '  AND is_active = 1'
+                '  AND is_active = :active'
             ),
-            {'id': item_id, 'qty': qty},
+            {'id': item_id, 'qty': qty, 'active': True},
         )
         if result.rowcount != 1:
             raise InventoryError(

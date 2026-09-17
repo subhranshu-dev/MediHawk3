@@ -9,6 +9,9 @@ backend/.pytest_cache/
 backend/instance/*.db
 backend/instance/*.db-shm
 backend/instance/*.db-wal
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
 *.pyc
 *.pyo
 __pycache__/

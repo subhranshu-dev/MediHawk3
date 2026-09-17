@@ -1,6 +1,15 @@
 """
 Pytest configuration and shared fixtures.
-All tests use an in-memory SQLite DB — never touches the real database file.
+
+Default: in-memory SQLite — never touches the real database file.
+PostgreSQL: set TEST_DATABASE_URL before running pytest.
+  The URL is read by TestingConfig at module-import time (before Flask-SQLAlchemy's
+  eager engine creation in init_app), so it must be present in the environment when
+  pytest starts — not set dynamically after import.
+
+  Example:
+    TEST_DATABASE_URL="postgresql://medihawk_test:pw@localhost:5433/medihawk_test" \\
+      pytest -q
 """
 import pytest
 
@@ -10,7 +19,7 @@ from extensions import db as _db
 
 @pytest.fixture(scope='function')
 def app():
-    """Create a test Flask application with in-memory SQLite."""
+    """Create a test Flask application with in-memory SQLite (or PostgreSQL if TEST_DATABASE_URL set)."""
     _app = create_app('testing')
     with _app.app_context():
         # Import models so create_all knows about them

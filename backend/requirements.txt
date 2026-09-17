@@ -1,4 +1,4 @@
-# MediHawk Backend — Phase 1A Dependencies
+# MediHawk Backend — Dependencies
 # Install: pip install -r requirements.txt
 
 # ── Core Framework ────────────────────────────────────────────────────────────
@@ -12,6 +12,16 @@ bcrypt>=4.1.3
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 python-dotenv>=1.0.1
+
+# ── Database drivers ──────────────────────────────────────────────────────────
+# psycopg (psycopg3) for production PostgreSQL.
+# SQLite is built into Python — no driver needed for development/testing.
+# psycopg[binary] bundles the libpq C library; use psycopg[c] for smaller
+# images when libpq is already installed on the host.
+psycopg[binary]>=3.1
+
+# ── Production WSGI server ────────────────────────────────────────────────────
+gunicorn>=21.2.0
 
 # ── Testing ───────────────────────────────────────────────────────────────────
 pytest>=8.1.1
