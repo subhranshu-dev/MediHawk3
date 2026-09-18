@@ -267,7 +267,9 @@ export function DoctorLogin() {
     setFormError('')
     if (!validateContact()) return
     if (authMethod !== 'email') {
-      setFormError('OTP login requires an email address. Please switch to email.')
+      setAuthMethod('email')
+      setPhoneErr('')
+      setFormError('')
       return
     }
     setOtpSending(true)
