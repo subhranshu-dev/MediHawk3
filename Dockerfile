@@ -25,6 +25,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Application source
 COPY backend/ ./
 
+# Gunicorn production config (lives at repo root, not inside backend/)
+COPY deployment/ ./deployment/
+
 # Non-root user
 RUN useradd --no-create-home --shell /bin/false medihawk \
     && mkdir -p /app/instance \
