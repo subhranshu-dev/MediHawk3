@@ -97,6 +97,21 @@ def login():
         logger.warning('Login attempt for disabled account: user_id=%s', user.id)
         return error('ACCOUNT_DISABLED', 'This account has been disabled. Contact the administrator.', 403)
 
+    if role_hint == 'doctor':
+        vs = getattr(user, 'verification_status', 'verified')
+        if vs == 'pending':
+            logger.info('Login blocked: doctor pending verification user_id=%s', user.id)
+            return error('DOCTOR_VERIFICATION_PENDING',
+                         'Your account is pending administrator review. You will be notified once approved.', 403)
+        if vs == 'rejected':
+            logger.info('Login blocked: doctor rejected user_id=%s', user.id)
+            return error('DOCTOR_VERIFICATION_REJECTED',
+                         'Your registration was not approved. Contact support for more information.', 403)
+        if vs == 'suspended':
+            logger.warning('Login blocked: doctor suspended user_id=%s', user.id)
+            return error('DOCTOR_ACCOUNT_SUSPENDED',
+                         'Your account has been suspended. Contact the administrator.', 403)
+
     db_role = user.to_dict().get('role', role_hint)
 
     token = generate_token(
@@ -145,27 +160,42 @@ def verify_token():
 @auth_bp.route('/api/auth/doctor/signup', methods=['POST'])
 def doctor_signup():
     """
-    Doctor self-registration.
+    Doctor self-registration with institutional verification.
 
-    Body: { "name": "...", "email": "...", "phone": "...", "password": "...", "phc_id": "..." }
+    Body:
+      { "name": "...", "email": "...", "phone": "...", "password": "...",
+        "medical_registration_no": "...", "phc_id": "...", "invitation_code": "..." }
 
-    Creates a new doctor account with email_verified=False, then sends a
-    verification OTP to the provided email address.
+    The invitation_code is an admin-issued single-use code that authorises
+    this registration. It is validated via HMAC digest — never stored in plaintext.
+
+    Creates a new doctor account with email_verified=False, verification_status='pending',
+    then sends an OTP to verify the email. The account cannot be used until an admin
+    sets verification_status='verified'.
     """
+    import hashlib
+    import hmac as _hmac
+    from datetime import datetime, timezone
     from extensions import db
+    from models.invitation import DoctorInvitation
 
     data = request.get_json(silent=True) or {}
     name = data.get('name', '').strip()
     email_raw = data.get('email', '').strip()
     phone_raw = data.get('phone', '').strip()
     password = data.get('password', '')
+    med_reg_no = data.get('medical_registration_no', '').strip() or None
     phc_id = data.get('phc_id', '').strip() or None
+    invitation_code = data.get('invitation_code', '').strip()
 
     missing = []
-    if not name:      missing.append('name')
-    if not email_raw: missing.append('email')
-    if not phone_raw: missing.append('phone')
-    if not password:  missing.append('password')
+    if not name:            missing.append('name')
+    if not email_raw:       missing.append('email')
+    if not phone_raw:       missing.append('phone')
+    if not password:        missing.append('password')
+    if not med_reg_no:      missing.append('medical_registration_no')
+    if not phc_id:          missing.append('phc_id')
+    if not invitation_code: missing.append('invitation_code')
     if missing:
         return validation_error(f"Missing required fields: {', '.join(missing)}")
 
@@ -182,10 +212,45 @@ def doctor_signup():
     if not normalized_phone:
         return validation_error('Invalid phone number. Enter a 10-digit Indian mobile number.')
 
+    # ── Validate invitation code ──────────────────────────────────────────────
+    hmac_secret = current_app.config.get('OTP_HMAC_SECRET', '')
+    if not hmac_secret:
+        logger.error('Doctor signup attempted but OTP_HMAC_SECRET is not configured')
+        return error('INVITATION_SYSTEM_UNAVAILABLE', 'Invitation system is not configured. Contact support.', 503)
+
+    supplied_hash = _hmac.new(
+        hmac_secret.encode('utf-8'),
+        invitation_code.encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()
+
+    # Fetch all non-expired, non-revoked, unused invitations for this facility
+    # and find the one whose hash matches (constant-time per row)
+    now_utc = datetime.now(timezone.utc)
+    invitation = DoctorInvitation.query.filter_by(
+        facility_id=phc_id,
+        revoked=False,
+        used_by_doctor_id=None,
+    ).filter(DoctorInvitation.expires_at > now_utc).all()
+
+    matched_inv = None
+    for inv in invitation:
+        if _hmac.compare_digest(inv.code_hash, supplied_hash):
+            matched_inv = inv
+            break
+
+    if matched_inv is None:
+        logger.warning('Doctor signup: invalid/expired/used invitation for phc=%s email=%s',
+                       phc_id, _redact(normalized_email))
+        return error('INVALID_INVITATION_CODE',
+                     'Invalid, expired, or already-used invitation code.', 403)
+
     if Doctor.query.filter_by(email=normalized_email).first():
         return error('EMAIL_EXISTS', 'An account with this email already exists.', 409)
     if Doctor.query.filter_by(phone=normalized_phone).first():
         return error('PHONE_EXISTS', 'An account with this phone number already exists.', 409)
+    if med_reg_no and Doctor.query.filter_by(medical_registration_no=med_reg_no).first():
+        return error('MED_REG_NO_EXISTS', 'An account with this medical registration number already exists.', 409)
 
     doctor_id = f'doc-{uuid.uuid4().hex[:8]}'
     doctor = Doctor(
@@ -193,12 +258,19 @@ def doctor_signup():
         name=name,
         email=normalized_email,
         phone=normalized_phone,
-        phc_id=phc_id,
+        phc_id=matched_inv.facility_id,  # authoritative facility from invitation
         password_hash=hash_password(password),
         is_active=True,
         email_verified=False,
+        verification_status='pending',
+        medical_registration_no=med_reg_no,
     )
     db.session.add(doctor)
+    db.session.flush()  # get doctor.id without commit
+
+    # Mark invitation used — bound to this doctor atomically
+    matched_inv.used_by_doctor_id = doctor_id
+    matched_inv.used_at = now_utc
     db.session.commit()
 
     purpose = 'email_verify_doctor'
@@ -218,8 +290,9 @@ def doctor_signup():
             )
         return error('EMAIL_DELIVERY_FAILED', 'Account created but verification email failed. Contact support.', 503)
 
-    logger.info('Doctor signup: user_id=%s email=%s', doctor_id, _redact(normalized_email))
-    return created({'message': 'Account created. Check your email for a verification code.', 'user_id': doctor_id})
+    logger.info('Doctor signup: user_id=%s email=%s invitation=%s',
+                doctor_id, _redact(normalized_email), matched_inv.id)
+    return created({'message': 'Account created. Check your email for a verification code. Your account will be reviewed by an administrator before you can log in.', 'user_id': doctor_id})
 
 
 # ── Admin signup (invite-code controlled) ─────────────────────────────────────
@@ -459,6 +532,20 @@ def otp_verify():
 
     if not getattr(user, 'is_active', True):
         return error('ACCOUNT_DISABLED', 'This account has been disabled. Contact the administrator.', 403)
+
+    vs = getattr(user, 'verification_status', 'verified')
+    if vs == 'pending':
+        logger.info('OTP login blocked: doctor pending verification user_id=%s', user.id)
+        return error('DOCTOR_VERIFICATION_PENDING',
+                     'Your account is pending administrator review. You will be notified once approved.', 403)
+    if vs == 'rejected':
+        logger.info('OTP login blocked: doctor rejected user_id=%s', user.id)
+        return error('DOCTOR_VERIFICATION_REJECTED',
+                     'Your registration was not approved. Contact support for more information.', 403)
+    if vs == 'suspended':
+        logger.warning('OTP login blocked: doctor suspended user_id=%s', user.id)
+        return error('DOCTOR_ACCOUNT_SUSPENDED',
+                     'Your account has been suspended. Contact the administrator.', 403)
 
     db_role = user.to_dict().get('role', role)
     token = generate_token(

@@ -3,7 +3,7 @@ import { clsx } from 'clsx'
 import {
   LayoutDashboard, Package, Navigation, Cpu,
   BrainCircuit, Shield, Bell, CheckSquare, BarChart3,
-  History, ChevronLeft, ChevronRight, MapPin
+  History, ChevronLeft, ChevronRight, MapPin, UserCheck
 } from 'lucide-react'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { useStore } from '@/store'
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { label: 'Alert Center', path: '/admin/alerts', icon: Bell },
   { label: 'Verification', path: '/admin/verification', icon: CheckSquare },
   { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
+  { label: 'Doctor Registry', path: '/admin/doctors', icon: UserCheck },
   { label: 'Locations', path: '/admin/locations', icon: MapPin },
   { label: 'History', path: '/admin/history', icon: History },
 ]

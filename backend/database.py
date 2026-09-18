@@ -166,6 +166,22 @@ def _apply_migrations(db) -> None:
             db.session.commit()
             logger.info('Migration applied: orders.patient_age')
 
+    # Phase 2A: doctor verification columns
+    if 'doctors' in tables:
+        doc_cols_2a = {c['name'] for c in inspector.get_columns('doctors')}
+        ts = _datetime_type(d)
+        for col_name, col_ddl in [
+            ('verification_status',    "TEXT NOT NULL DEFAULT 'pending'"),
+            ('medical_registration_no', 'TEXT'),
+            ('verified_at',             ts),
+            ('verified_by_admin_id',    'TEXT'),
+            ('verification_notes',      'TEXT'),
+        ]:
+            if col_name not in doc_cols_2a:
+                db.session.execute(text(f'ALTER TABLE doctors ADD COLUMN {col_name} {col_ddl}'))
+                db.session.commit()
+                logger.info('Migration applied: doctors.%s', col_name)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s | %(message)s')

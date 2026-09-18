@@ -145,6 +145,9 @@ export function DoctorLogin() {
   const [sgPhone, setSgPhone]   = useState('')
   const [sgPw, setSgPw]         = useState('')
   const [sgConfPw, setSgConfPw] = useState('')
+  const [sgMedReg, setSgMedReg] = useState('')
+  const [sgPhcId, setSgPhcId]   = useState('')
+  const [sgInvCode, setSgInvCode] = useState('')
   const [sgShowPw, setSgShowPw] = useState(false)
   const [sgLoading, setSgLoading] = useState(false)
   const [sgError, setSgError]   = useState('')
@@ -153,6 +156,9 @@ export function DoctorLogin() {
   const [sgPhoneErr, setSgPhoneErr] = useState('')
   const [sgPwErr, setSgPwErr]       = useState('')
   const [sgConfPwErr, setSgConfPwErr] = useState('')
+  const [sgMedRegErr, setSgMedRegErr] = useState('')
+  const [sgPhcIdErr, setSgPhcIdErr]   = useState('')
+  const [sgInvCodeErr, setSgInvCodeErr] = useState('')
 
   // Email verification (after signup)
   const [veEmail, setVeEmail]   = useState('')
@@ -242,6 +248,12 @@ export function DoctorLogin() {
       const code = (err as { code?: string }).code
       if (code === 'INVALID_CREDENTIALS') {
         setFormError('Invalid credentials. Check your phone/email and password.')
+      } else if (code === 'DOCTOR_VERIFICATION_PENDING') {
+        setFormError('Your account is pending administrator review. You will be notified once approved.')
+      } else if (code === 'DOCTOR_VERIFICATION_REJECTED') {
+        setFormError('Your registration was not approved. Please contact support for more information.')
+      } else if (code === 'DOCTOR_ACCOUNT_SUSPENDED') {
+        setFormError('Your account has been suspended. Please contact the administrator.')
       } else {
         setFormError('Unable to sign in. Check your credentials and try again.')
       }
@@ -350,6 +362,9 @@ export function DoctorLogin() {
     if (!validPhone(sgPhone)) { setSgPhoneErr('Enter a valid 10-digit phone number'); valid = false } else setSgPhoneErr('')
     if (sgPw.length < 8) { setSgPwErr('Password must be at least 8 characters'); valid = false } else setSgPwErr('')
     if (sgConfPw !== sgPw) { setSgConfPwErr('Passwords do not match'); valid = false } else setSgConfPwErr('')
+    if (!sgMedReg.trim()) { setSgMedRegErr('Medical registration number is required'); valid = false } else setSgMedRegErr('')
+    if (!sgPhcId.trim()) { setSgPhcIdErr('Please select your PHC/CHC facility'); valid = false } else setSgPhcIdErr('')
+    if (!sgInvCode.trim()) { setSgInvCodeErr('Invitation code is required'); valid = false } else setSgInvCodeErr('')
     if (!valid) return
     setSgLoading(true)
     try {
@@ -358,6 +373,9 @@ export function DoctorLogin() {
         email: sgEmail.trim().toLowerCase(),
         phone: sgPhone.replace(/[\s\-]/g, ''),
         password: sgPw,
+        medical_registration_no: sgMedReg.trim(),
+        phc_id: sgPhcId.trim(),
+        invitation_code: sgInvCode.trim(),
       })
       setVeEmail(sgEmail.trim().toLowerCase())
       setVeCells(['', '', '', '', '', ''])
@@ -371,6 +389,10 @@ export function DoctorLogin() {
         setSgEmailErr('An account with this email already exists.')
       } else if (e.code === 'PHONE_EXISTS') {
         setSgPhoneErr('An account with this phone number already exists.')
+      } else if (e.code === 'MED_REG_NO_EXISTS') {
+        setSgMedRegErr('An account with this registration number already exists.')
+      } else if (e.code === 'INVALID_INVITATION_CODE') {
+        setSgInvCodeErr('Invalid, expired, or already-used invitation code.')
       } else {
         setSgError(e.message ?? 'Could not create account. Please try again.')
       }
@@ -426,6 +448,9 @@ export function DoctorLogin() {
         email: veEmail,
         phone: sgPhone.replace(/[\s\-]/g, ''),
         password: sgPw,
+        medical_registration_no: sgMedReg.trim(),
+        phc_id: sgPhcId.trim(),
+        invitation_code: sgInvCode.trim(),
       })
       setVeCells(['', '', '', '', '', ''])
       startTimer(setVeTimer, veTimerRef)
@@ -742,6 +767,61 @@ export function DoctorLogin() {
                       />
                     </div>
                     {sgConfPwErr && <p className="text-xs" style={{ color: '#c62832' }}>{sgConfPwErr}</p>}
+                  </div>
+
+                  {/* Medical Registration Number */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-text-secondary font-medium" htmlFor="sg-med-reg">Medical Registration Number</label>
+                    <input
+                      id="sg-med-reg"
+                      type="text"
+                      value={sgMedReg}
+                      onChange={e => { setSgMedReg(e.target.value); setSgMedRegErr('') }}
+                      className={`${iClass} px-3`}
+                      style={{ ...BASE_INPUT, ...(sgMedRegErr ? { borderColor: 'rgba(198,40,50,0.60)' } : {}) }}
+                      placeholder="e.g. MCI/2024/OD12345"
+                      autoComplete="off"
+                      onFocus={e => applyFocus(e.target as HTMLInputElement)}
+                      onBlur={e  => applyBlur(e.target as HTMLInputElement)}
+                    />
+                    {sgMedRegErr && <p className="text-xs" style={{ color: '#c62832' }}>{sgMedRegErr}</p>}
+                  </div>
+
+                  {/* PHC/CHC Facility ID */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-text-secondary font-medium" htmlFor="sg-phc">Facility ID (PHC/CHC)</label>
+                    <input
+                      id="sg-phc"
+                      type="text"
+                      value={sgPhcId}
+                      onChange={e => { setSgPhcId(e.target.value); setSgPhcIdErr('') }}
+                      className={`${iClass} px-3`}
+                      style={{ ...BASE_INPUT, ...(sgPhcIdErr ? { borderColor: 'rgba(198,40,50,0.60)' } : {}) }}
+                      placeholder="e.g. phc-chandaka"
+                      autoComplete="off"
+                      onFocus={e => applyFocus(e.target as HTMLInputElement)}
+                      onBlur={e  => applyBlur(e.target as HTMLInputElement)}
+                    />
+                    {sgPhcIdErr && <p className="text-xs" style={{ color: '#c62832' }}>{sgPhcIdErr}</p>}
+                  </div>
+
+                  {/* Invitation Code */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-text-secondary font-medium" htmlFor="sg-inv-code">Invitation Code</label>
+                    <p className="text-2xs text-text-muted -mt-0.5">Provided by your facility administrator</p>
+                    <input
+                      id="sg-inv-code"
+                      type="text"
+                      value={sgInvCode}
+                      onChange={e => { setSgInvCode(e.target.value); setSgInvCodeErr('') }}
+                      className={`${iClass} px-3`}
+                      style={{ ...BASE_INPUT, ...(sgInvCodeErr ? { borderColor: 'rgba(198,40,50,0.60)' } : {}) }}
+                      placeholder="Paste invitation code here"
+                      autoComplete="off"
+                      onFocus={e => applyFocus(e.target as HTMLInputElement)}
+                      onBlur={e  => applyBlur(e.target as HTMLInputElement)}
+                    />
+                    {sgInvCodeErr && <p className="text-xs" style={{ color: '#c62832' }}>{sgInvCodeErr}</p>}
                   </div>
 
                   {sgError && (

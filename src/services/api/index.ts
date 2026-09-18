@@ -161,7 +161,10 @@ export const authService = {
       body: JSON.stringify({ email, otp }),
     }),
 
-  doctorSignup: (data: { name: string; email: string; phone: string; password: string; phc_id?: string }): Promise<{ success: boolean; message: string; user_id: string }> =>
+  doctorSignup: (data: {
+    name: string; email: string; phone: string; password: string;
+    medical_registration_no: string; phc_id: string; invitation_code: string;
+  }): Promise<{ success: boolean; message: string; user_id: string }> =>
     request('/api/auth/doctor/signup', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -338,4 +341,16 @@ export const adminService = {
   priorityQueue: () => request('/api/admin/priority-queue'),
   analytics: () => request('/api/admin/analytics'),
   locations: () => request('/api/admin/locations'),
+  createDoctorInvitation: (facility_id: string) =>
+    request('/api/admin/invitations', { method: 'POST', body: JSON.stringify({ facility_id }) }),
+  listDoctorInvitations: () => request('/api/admin/invitations'),
+  revokeInvitation: (invitationId: string) =>
+    request(`/api/admin/invitations/${invitationId}/revoke`, { method: 'POST' }),
+  listPendingDoctors: () => request('/api/admin/verification/pending'),
+  approveDoctorVerification: (doctorId: string, notes?: string) =>
+    request(`/api/admin/verification/${doctorId}/approve`, { method: 'POST', body: JSON.stringify({ notes: notes ?? '' }) }),
+  rejectDoctorVerification: (doctorId: string, notes?: string) =>
+    request(`/api/admin/verification/${doctorId}/reject`, { method: 'POST', body: JSON.stringify({ notes: notes ?? '' }) }),
+  suspendDoctor: (doctorId: string, notes?: string) =>
+    request(`/api/admin/verification/${doctorId}/suspend`, { method: 'POST', body: JSON.stringify({ notes: notes ?? '' }) }),
 }

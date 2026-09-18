@@ -169,3 +169,6 @@ def _register_blueprints(app: Flask) -> None:
 
     from routes.admin import admin_bp
     app.register_blueprint(admin_bp)
+
+    from routes.verification import verification_bp
+    app.register_blueprint(verification_bp)

@@ -60,3 +60,32 @@ def require_role(role: str) -> Callable:
 # Convenience aliases
 require_admin = require_role('admin')
 require_doctor = require_role('doctor')
+
+
+def require_verified_doctor(f: Callable) -> Callable:
+    """
+    Decorator: requires doctor role AND verification_status='verified'.
+    Blocks pending/rejected/suspended doctors from accessing protected routes
+    even if they hold a valid JWT.
+    """
+    @wraps(f)
+    @require_auth
+    def decorated(*args, **kwargs):
+        if g.user_role != 'doctor':
+            return _forbidden(f"Role 'doctor' required. Your role: {g.user_role!r}.")
+        from extensions import db as _db
+        from models.doctor import Doctor
+        doctor = _db.session.get(Doctor, g.user_id)
+        if doctor is None:
+            return _unauthorized('USER_NOT_FOUND', 'Doctor account not found.')
+        if not getattr(doctor, 'is_active', True):
+            return _forbidden('This account has been disabled.')
+        vs = getattr(doctor, 'verification_status', 'verified')
+        if vs == 'pending':
+            return _forbidden('Your account is pending administrator review.')
+        if vs == 'rejected':
+            return _forbidden('Your registration was not approved.')
+        if vs == 'suspended':
+            return _forbidden('Your account has been suspended.')
+        return f(*args, **kwargs)
+    return decorated

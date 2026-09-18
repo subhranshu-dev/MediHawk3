@@ -36,6 +36,7 @@ import { AdminVerification } from '@/pages/admin/AdminVerification'
 import { AdminAnalytics } from '@/pages/admin/AdminAnalytics'
 import { AdminLocations } from '@/pages/admin/AdminLocations'
 import { AdminHistory } from '@/pages/admin/AdminHistory'
+import { AdminDoctorVerification } from '@/pages/admin/AdminDoctorVerification'
 import { AdminDemoControls } from '@/pages/admin/AdminDemoControls'
 import { HawkieFloat } from '@/components/hawkie/HawkieFloat'
 
@@ -107,6 +108,7 @@ function AdminPortal() {
                     <Route path="/analytics" element={<AdminAnalytics />} />
                     <Route path="/locations" element={<AdminLocations />} />
                     <Route path="/history" element={<AdminHistory />} />
+                    <Route path="/doctors" element={<AdminDoctorVerification />} />
                   </Routes>
                 </motion.div>
               </AnimatePresence>

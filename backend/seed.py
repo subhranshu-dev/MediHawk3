@@ -304,6 +304,7 @@ def run_seed(app=None) -> None:
                 password_hash=hash_password('MediHawk@Doctor2026'),
                 is_active=True,
                 email_verified=True,
+                verification_status='verified',
             )
             db.session.add(doctor)
             db.session.commit()
@@ -320,6 +321,7 @@ def run_seed(app=None) -> None:
                 password_hash=hash_password('MediHawk@Doctor2026B'),
                 is_active=True,
                 email_verified=True,
+                verification_status='verified',
             )
             db.session.add(doctor_b)
             db.session.commit()
