@@ -1,8 +1,8 @@
 # MediHawk — Final Submission Production QA Report
 
-**Date:** 2026-09-18  
+**Date:** 2026-09-19  
 **Branch:** main  
-**Latest commit:** 4575fcc — `fix: add User-Agent header to bypass Cloudflare 1010 WAF block on Resend API`  
+**Latest commit:** 363e159 — `feat: add prototype demo authentication mode for SIH submission`  
 **Production URLs:** https://medi-hawk3.vercel.app (frontend) · https://medihawk3.onrender.com (backend)
 
 ---
@@ -16,7 +16,7 @@
 | Backend | Render FREE — Flask 3.x / Gunicorn |
 | Database | Render PostgreSQL 16 |
 | Email | Resend (HTTPS transport) — `EMAIL_PROVIDER=https` |
-| Backend tests | **494/494 pass** (SQLite, Python 3.14) |
+| Backend tests | **513/513 pass** (SQLite, Python 3.14) |
 
 ---
 
@@ -83,6 +83,36 @@ Also increased error body logging from 300 → 500 chars so Cloudflare error pag
 
 ---
 
+### ISSUE 4 — IMPLEMENTED: Prototype Demo Authentication Mode
+
+**Requirement:** SIH 2026 judges need to evaluate the full Doctor→Order→Admin→Simulation
+flow without requiring real email delivery or pre-seeded production accounts.
+
+**Implementation (commit 363e159):**
+
+| Component | Change |
+|-----------|--------|
+| `backend/config.py` | Added `DEMO_AUTH_ENABLED` env var (default `false`) |
+| `backend/app.py` | `_seed_demo_accounts()` called on startup when flag is `true` |
+| `backend/routes/auth.py` | `POST /api/auth/demo/login` + `GET /api/config/public` |
+| `src/services/api/index.ts` | `authService.demoLogin(role)` |
+| `src/pages/auth/DoctorLogin.tsx` | Demo Access button + FP demo message + banner |
+| `src/pages/auth/AdminLogin.tsx` | Demo Access button + FP demo message + banner |
+| `backend/tests/test_demo_auth.py` | 19 new tests |
+
+**Security properties maintained:**
+- JWT role always taken from DB record of demo user — never from request
+- Demo endpoint returns 403 unless `DEMO_AUTH_ENABLED=true` on Render
+- Demo accounts use `.medihawk.local` domain — cannot receive real email
+- All existing auth flows (bcrypt, OTP, admin invite code) remain untouched
+- `require_admin` enforced on all admin endpoints — demo JWT not special-cased
+
+**Required env vars to activate:**
+- Render: `DEMO_AUTH_ENABLED=true`
+- Vercel: `VITE_DEMO_MODE=true`
+
+---
+
 ## 3. Automated Test Results
 
 ### 3a. Backend pytest suite
@@ -91,14 +121,31 @@ Also increased error body logging from 300 → 500 chars so Cloudflare error pag
 |-----|-------|--------|
 | Pre-fix baseline | 488 | All pass |
 | After email transport fix | 494 | All pass (+6 new tests) |
+| After demo auth implementation | 513 | All pass (+19 new tests) |
 
-**New tests added (commit 4575fcc):**
+**New tests added (commit 4575fcc — email transport):**
 - `test_resend_403_raises_delivery_failed` — HTTP 403 → EMAIL_DELIVERY_FAILED
 - `test_resend_cloudflare_1010_body_logged` — CF 1010 error body captured in logs
 - `test_resend_user_agent_header_is_medihawk` — User-Agent: MediHawk/1.0 verified
 - `test_resend_api_key_not_in_logs` — API key never leaks to logs
 - `test_resend_sender_restriction_gmail_raises_delivery_failed` — gmail 422 → error
 - `test_resend_invalid_api_key_raises_delivery_failed` — revoked key → error
+
+**New tests added (commit 363e159 — demo auth, test_demo_auth.py):**
+- `test_demo_enabled_true/false` — `/api/config/public` reflects flag
+- `test_no_secrets_in_response` — public config contains no sensitive keys
+- `test_doctor/admin_demo_login_returns_jwt` — JWT issued for seeded accounts
+- `test_demo_doctor/admin_jwt_role_is_doctor/admin` — role from DB in JWT payload
+- `test_demo_jwt_sub_is_user_id` — JWT sub matches demo account ID
+- `test_demo_disabled_returns_403` — endpoint blocked when flag off
+- `test_invalid/missing_role_returns_validation_error` — input validation
+- `test_role_from_db_not_request_body` — role is never taken from request
+- `test_demo_login_does_not_accept_arbitrary_credentials` — email/pw fields ignored
+- `test_demo_response_user_fields_present` — user object contains required fields
+- `test_seeding_is_idempotent` — double-seed produces no duplicates
+- `test_demo_doctor_verification_status_is_verified` — seeded doc is verified
+- `test_demo_doctor/admin_email_is_local_domain` — accounts use .local domain
+- `test_demo_accounts_not_seeded_when_flag_off` — seeding requires explicit flag
 
 ### 3b. Production endpoint verification
 
@@ -180,6 +227,11 @@ The production database is empty (`SEED_DEMO_DATA=false`). To use the full flow:
 | No secrets committed to git | ✓ CONFIRMED |
 | CORS: specific origins only, `supports_credentials=True` | ✓ CONFIRMED |
 | Frontend: no localhost calls in production build | ✓ CONFIRMED |
+| Demo JWT role from DB, never from request body | ✓ CONFIRMED (tested) |
+| Demo endpoint disabled unless DEMO_AUTH_ENABLED=true | ✓ CONFIRMED (tested) |
+| Demo accounts use `.local` domain — not real email | ✓ CONFIRMED |
+| Demo login rejects arbitrary email/password in body | ✓ CONFIRMED (tested) |
+| Demo mode does not bypass any admin endpoint checks | ✓ CONFIRMED |
 
 ---
 
@@ -203,11 +255,12 @@ Browser → https://medi-hawk3.vercel.app (Vercel CDN)
 
 | Item | Value |
 |------|-------|
-| Latest commit | 4575fcc — Cloudflare 1010 fix |
-| Backend tests | **494 pass / 0 fail** |
+| Latest commit | 363e159 — Demo auth implementation |
+| Backend tests | **513 pass / 0 fail** |
 | TypeScript errors | **0** |
 | Vite build | **Clean** |
-| Known blockers | Render deploy pending; email delivery unverified until deploy + inbox check |
+| Demo auth | DEMO_AUTH_ENABLED + VITE_DEMO_MODE env vars required on Render/Vercel |
+| Known blockers | Set DEMO_AUTH_ENABLED=true on Render, VITE_DEMO_MODE=true on Vercel |
 | Deferred features | Flask-SocketIO (Phase 1H) |
 
 ---
