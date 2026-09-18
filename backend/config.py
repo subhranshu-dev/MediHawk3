@@ -120,6 +120,17 @@ class BaseConfig:
     )
     SMTP_FROM_NAME: str = os.environ.get('SMTP_FROM_NAME', 'MediHawk').strip()
     SMTP_USE_TLS: bool = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
+    # SMTP_USE_SSL=true enables implicit SSL (port 465). Overrides SMTP_USE_TLS.
+    # Use when STARTTLS on port 587 is blocked (errno 101 = ENETUNREACH).
+    SMTP_USE_SSL: bool = os.environ.get('SMTP_USE_SSL', 'false').lower() in ('true', '1', 'yes')
+
+    # ── HTTPS email provider (fallback when all outbound SMTP ports are blocked) ──
+    # EMAIL_PROVIDER=https enables the HTTPS transport instead of SMTP.
+    # EMAIL_API_PROVIDER selects the service: 'resend', 'sendgrid', or 'mailgun'.
+    EMAIL_PROVIDER: str = os.environ.get('EMAIL_PROVIDER', 'smtp')
+    EMAIL_API_PROVIDER: str = os.environ.get('EMAIL_API_PROVIDER', 'resend')
+    EMAIL_API_KEY: str = os.environ.get('EMAIL_API_KEY', '')
+    EMAIL_API_DOMAIN: str = os.environ.get('EMAIL_API_DOMAIN', '')  # required for Mailgun
 
     # ── Admin signup (invite-code controlled) ─────────────────────────────────
     ADMIN_INVITE_CODE: str = os.environ.get('ADMIN_INVITE_CODE', '')

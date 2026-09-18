@@ -265,7 +265,7 @@ def smtp_diagnostic():
         "authentication": "ok"
       }
     """
-    from services.email_service import get_transport, SMTPTransport as _SMTPTransport
+    from services.email_service import get_transport
 
     transport = get_transport()
 
@@ -282,8 +282,8 @@ def smtp_diagnostic():
             'authentication': 'not_configured',
         })
 
-    if not isinstance(transport, _SMTPTransport):
-        # CollectingTransport (test mode)
+    if not hasattr(transport, 'test_auth'):
+        # CollectingTransport (test mode) has no test_auth
         return ok({
             'configured': False,
             'transport': 'collecting',
@@ -295,8 +295,9 @@ def smtp_diagnostic():
     result = transport.test_auth()
     result['configured'] = True
     logger.info(
-        'SMTP diagnostic: dns=%s tcp=%s connection=%s auth=%s admin=%s',
-        result.get('dns'), result.get('tcp'),
+        'Email diagnostic: transport=%s dns=%s tcp=%s connection=%s auth=%s admin=%s',
+        result.get('transport', '?'),
+        result.get('dns', 'n/a'), result.get('tcp', 'n/a'),
         result.get('connection'), result.get('authentication'), g.user_id,
     )
     return ok(result)
