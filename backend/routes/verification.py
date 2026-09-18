@@ -312,7 +312,7 @@ def smtp_test_send():
 
     Body: { "to": "admin@example.com" }
     """
-    from services.email_service import get_transport, SMTPTransport as _SMTPTransport
+    from services.email_service import get_transport
 
     data = request.get_json(silent=True) or {}
     to_email = (data.get('to') or '').strip()
@@ -320,31 +320,33 @@ def smtp_test_send():
         return validation_error('Missing or invalid field: to (must be a valid email address)')
 
     transport = get_transport()
-    if transport is None or not isinstance(transport, _SMTPTransport):
-        return error('SMTP_NOT_CONFIGURED', 'SMTP is not configured on this server.', 503)
+    # Accept any configured transport that can send (SMTP or HTTPS provider).
+    # CollectingTransport has no send() that reaches the network.
+    if transport is None or not hasattr(transport, 'send'):
+        return error('EMAIL_NOT_CONFIGURED', 'Email delivery is not configured on this server.', 503)
 
     try:
         transport.send(
             to=to_email,
-            subject='MediHawk — SMTP Test Email',
+            subject='MediHawk — Email Delivery Test',
             body_text=(
-                'This is a MediHawk SMTP diagnostic test email.\n\n'
-                'If you received this, SMTP is configured correctly.\n\n'
+                'This is a MediHawk email delivery diagnostic test.\n\n'
+                'If you received this, email delivery is configured correctly.\n\n'
                 'Do not share this email — it contains no OTP or credentials.'
             ),
             body_html=(
                 '<div style="font-family:sans-serif;max-width:480px;margin:0 auto">'
-                '<h2 style="color:#C62832">MediHawk SMTP Test</h2>'
+                '<h2 style="color:#C62832">MediHawk Email Test</h2>'
                 '<p>This is a diagnostic test email from MediHawk.</p>'
-                '<p style="color:green;font-weight:bold">✓ SMTP is configured correctly.</p>'
+                '<p style="color:green;font-weight:bold">&#10003; Email delivery is configured correctly.</p>'
                 '<p style="color:#999;font-size:12px">Do not share this email.</p>'
                 '</div>'
             ),
         )
-        logger.info('SMTP test email sent: to=%s admin=%s', to_email, g.user_id)
+        logger.info('Test email sent: to=%s admin=%s', to_email, g.user_id)
         return ok({'sent': True, 'to': to_email, 'message': 'Test email sent successfully.'})
     except RuntimeError:
-        return error('EMAIL_DELIVERY_FAILED', 'Test email delivery failed. Check SMTP configuration.', 503)
+        return error('EMAIL_DELIVERY_FAILED', 'Test email delivery failed. Check email configuration.', 503)
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
