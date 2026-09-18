@@ -126,13 +126,24 @@ def create_app(env: str | None = None) -> Flask:
         logger.info('MediHawk Backend starting | env=%s | mode=%s | db=%s',
                     resolved_env, mode, db_label)
 
-        # Auto-apply schema migrations on every startup (idempotent).
+        # ── Schema init + migrations (non-testing envs only) ─────────────────
+        # On a fresh database (e.g. new Render PostgreSQL): create_all() builds
+        # every table from the current SQLAlchemy models.
+        # On an existing database: create_all() is a no-op for tables that
+        # already exist — data is preserved.
+        # _apply_migrations() then adds any columns that were introduced after
+        # the initial schema (Phase 1B–1G incremental migrations).
+        # Both steps are idempotent and safe to repeat on every deployment.
         if not app.config.get('TESTING'):
+            import models  # noqa: F401 — register all models before create_all
+            db.create_all()
+            logger.info('Database schema created/verified | db=%s', db_label)
             try:
                 from database import _apply_migrations
                 _apply_migrations(db)
             except Exception as _mig_exc:
-                logger.error('Auto-migration failed: %s', _mig_exc)
+                logger.error('Schema migration failed: %s', _mig_exc)
+                raise  # do not silently start with a broken schema
 
         if mode == 'live':
             logger.warning(
