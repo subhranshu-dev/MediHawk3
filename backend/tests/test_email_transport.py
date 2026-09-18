@@ -7,6 +7,9 @@ Covers:
   - Missing transport returns EMAIL_NOT_CONFIGURED, not SMTP_NOT_CONFIGURED
   - SMTP_NOT_CONFIGURED is never raised when an HTTPS provider is active
   - urllib.error.HTTPError (4xx/5xx from provider) → EMAIL_DELIVERY_FAILED
+  - Resend 403 + Cloudflare 1010 error body logged
+  - User-Agent header set to 'MediHawk/1.0' (bypasses Cloudflare 1010 WAF block)
+  - API key never appears in log output (no secret leakage)
   - HTTP status code + response body prefix logged for 4xx errors
   - FallbackTransport: SMTP primary, HTTPS fallback on network errors only
   - FallbackTransport: auth errors do NOT trigger HTTPS fallback
@@ -14,6 +17,7 @@ Covers:
   - EMAIL_API_FROM overrides SMTP_FROM_EMAIL for HTTPS transport
   - Missing API key → transport=None → EMAIL_NOT_CONFIGURED
   - Network timeout (URLError/socket.timeout) → EMAIL_DELIVERY_FAILED
+  - Sender restriction (gmail From → 422) → EMAIL_DELIVERY_FAILED
   - OTP never returned in API responses
   - OTP session cancelled after delivery failure
   - OTP never appears in log output
@@ -224,6 +228,126 @@ class TestHTTPSTransportHTTPError:
         mock_resp.__exit__ = MagicMock(return_value=False)
         with patch('urllib.request.urlopen', return_value=mock_resp):
             t.send('doc@hospital.in', 'Test', 'body')  # Must not raise
+
+    def test_resend_403_raises_delivery_failed(self):
+        """Resend 403 Forbidden → RuntimeError('EMAIL_DELIVERY_FAILED')."""
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        with patch('urllib.request.urlopen', side_effect=self._make_http_error(403)):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('doc@hospital.in', 'Test', 'body')
+
+    def test_resend_cloudflare_1010_body_logged(self, caplog):
+        """Resend 403 + Cloudflare error 1010 body prefix → body logged for diagnosis."""
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        cf_body = b'<!DOCTYPE html><html><head><title>Access denied</title></head><body>error code: 1010</body></html>'
+        http_err = urllib.error.HTTPError(
+            url='https://api.resend.com/emails',
+            code=403, msg='Forbidden',
+            hdrs=None,  # type: ignore[arg-type]
+            fp=io.BytesIO(cf_body),
+        )
+        with patch('urllib.request.urlopen', side_effect=http_err):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                with caplog.at_level(logging.ERROR):
+                    t.send('doc@hospital.in', 'Test', 'body')
+        assert '403' in caplog.text
+        assert '1010' in caplog.text
+
+    def test_resend_user_agent_header_is_medihawk(self):
+        """Request to Resend API must include User-Agent: MediHawk/1.0 to avoid CF 1010."""
+        import urllib.request as ur
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        captured: list[ur.Request] = []
+
+        def capture_request(req, timeout=None):
+            captured.append(req)
+            mock_resp = MagicMock()
+            mock_resp.__enter__ = lambda s: s
+            mock_resp.__exit__ = MagicMock(return_value=False)
+            return mock_resp
+
+        with patch('urllib.request.urlopen', side_effect=capture_request):
+            t.send('doc@hospital.in', 'Test', 'body')
+
+        assert len(captured) == 1
+        ua = captured[0].get_header('User-agent')
+        assert ua == 'MediHawk/1.0', f'Expected MediHawk/1.0 but got: {ua!r}'
+
+    def test_resend_api_key_not_in_logs(self, caplog):
+        """API key must never appear in log records (no secret leakage)."""
+        from services.email_service import HTTPSTransport
+
+        secret_key = 're_super_secret_api_key_12345'
+        t = HTTPSTransport(
+            provider='resend', api_key=secret_key,
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        err_body = b'{"statusCode":403,"name":"forbidden","message":"Forbidden"}'
+        http_err = urllib.error.HTTPError(
+            url='https://api.resend.com/emails',
+            code=403, msg='Forbidden',
+            hdrs=None,  # type: ignore[arg-type]
+            fp=io.BytesIO(err_body),
+        )
+        with patch('urllib.request.urlopen', side_effect=http_err):
+            with pytest.raises(RuntimeError):
+                with caplog.at_level(logging.DEBUG):
+                    t.send('doc@hospital.in', 'Test', 'body')
+        for record in caplog.records:
+            assert secret_key not in record.getMessage(), (
+                f'API key leaked in log: {record.getMessage()}'
+            )
+
+    def test_resend_sender_restriction_gmail_raises_delivery_failed(self, caplog):
+        """Gmail sender (@gmail.com) rejected by Resend 422 → EMAIL_DELIVERY_FAILED."""
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='user@gmail.com', from_name='MediHawk',
+        )
+        err_body = (
+            b'{"statusCode":422,"name":"validation_error",'
+            b'"message":"The from address user@gmail.com is not verified."}'
+        )
+        http_err = urllib.error.HTTPError(
+            url='https://api.resend.com/emails',
+            code=422, msg='Unprocessable',
+            hdrs=None,  # type: ignore[arg-type]
+            fp=io.BytesIO(err_body),
+        )
+        with patch('urllib.request.urlopen', side_effect=http_err):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                with caplog.at_level(logging.ERROR):
+                    t.send('doc@hospital.in', 'Test', 'body')
+        assert '422' in caplog.text
+
+    def test_resend_invalid_api_key_raises_delivery_failed(self):
+        """Invalid/revoked API key → Resend 401 → EMAIL_DELIVERY_FAILED."""
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_invalid_or_revoked',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        with patch('urllib.request.urlopen', side_effect=self._make_http_error(401)):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('doc@hospital.in', 'Test', 'body')
 
 
 # ── FallbackTransport tests ────────────────────────────────────────────────────

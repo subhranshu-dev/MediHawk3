@@ -366,6 +366,11 @@ class HTTPSTransport:
             headers={
                 'Authorization': f'Bearer {self._api_key}',
                 'Content-Type': 'application/json',
+                # Cloudflare (in front of Resend's API) blocks requests with Python's
+                # default "Python-urllib/3.x" User-Agent with error 1010 ("browser
+                # signature banned"). A descriptive app UA bypasses the WAF rule.
+                'User-Agent': 'MediHawk/1.0',
+                'Accept': 'application/json',
             },
             method='POST',
         )
@@ -373,11 +378,12 @@ class HTTPSTransport:
             with _urllib_request.urlopen(req, timeout=30):
                 pass  # 2xx success — urlopen raises HTTPError for 4xx/5xx
         except _urllib_error.HTTPError as exc:
-            # Read up to 300 bytes of the response body for diagnostics.
+            # Read up to 500 bytes of the response body for diagnostics.
             # 422 responses include the validation error (e.g. "invalid from address").
+            # Cloudflare 1010 error pages include the blocked User-Agent string.
             _body = ''
             try:
-                _body = exc.read().decode('utf-8', errors='replace')[:300]
+                _body = exc.read().decode('utf-8', errors='replace')[:500]
             except Exception:
                 pass
             logger.error('Resend API HTTP error: status=%d from=%s body_prefix=%s',
@@ -399,6 +405,8 @@ class HTTPSTransport:
             headers={
                 'Authorization': f'Bearer {self._api_key}',
                 'Content-Type': 'application/json',
+                'User-Agent': 'MediHawk/1.0',
+                'Accept': 'application/json',
             },
             method='POST',
         )
@@ -427,6 +435,8 @@ class HTTPSTransport:
             headers={
                 'Authorization': f'Basic {creds}',
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'MediHawk/1.0',
+                'Accept': 'application/json',
             },
             method='POST',
         )
