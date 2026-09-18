@@ -169,8 +169,9 @@ def doctor_signup():
     The invitation_code is an admin-issued single-use code that authorises
     this registration. It is validated via HMAC digest — never stored in plaintext.
 
-    Creates a new doctor account with email_verified=False, verification_status='pending',
-    then sends an OTP to verify the email. The account cannot be used until an admin
+    Sends the verification OTP first; only if email delivery succeeds are the
+    doctor account and invitation committed to the database. This prevents orphaned
+    accounts when SMTP is misconfigured. The account cannot be used until an admin
     sets verification_status='verified'.
     """
     import hashlib
@@ -253,26 +254,11 @@ def doctor_signup():
         return error('MED_REG_NO_EXISTS', 'An account with this medical registration number already exists.', 409)
 
     doctor_id = f'doc-{uuid.uuid4().hex[:8]}'
-    doctor = Doctor(
-        id=doctor_id,
-        name=name,
-        email=normalized_email,
-        phone=normalized_phone,
-        phc_id=matched_inv.facility_id,  # authoritative facility from invitation
-        password_hash=hash_password(password),
-        is_active=True,
-        email_verified=False,
-        verification_status='pending',
-        medical_registration_no=med_reg_no,
-    )
-    db.session.add(doctor)
-    db.session.flush()  # get doctor.id without commit
 
-    # Mark invitation used — bound to this doctor atomically
-    matched_inv.used_by_doctor_id = doctor_id
-    matched_inv.used_at = now_utc
-    db.session.commit()
-
+    # Attempt OTP creation and email BEFORE committing the doctor account.
+    # OTPSession.user_id has no FK constraint, so we can forward-reference the
+    # doctor_id even though the doctor row does not exist yet.  If email fails,
+    # we cancel the OTP and return 503 — no doctor record is ever written.
     purpose = 'email_verify_doctor'
     try:
         otp_plaintext = request_otp(current_app.config, normalized_email, purpose, user_id=doctor_id)
@@ -288,7 +274,26 @@ def doctor_signup():
                 'Email delivery is not configured on this server. Contact support.',
                 503,
             )
-        return error('EMAIL_DELIVERY_FAILED', 'Account created but verification email failed. Contact support.', 503)
+        return error('EMAIL_DELIVERY_FAILED',
+                     'Could not send verification email. Please try again.', 503)
+
+    # Email delivered — now commit doctor + invitation atomically.
+    doctor = Doctor(
+        id=doctor_id,
+        name=name,
+        email=normalized_email,
+        phone=normalized_phone,
+        phc_id=matched_inv.facility_id,  # authoritative facility from invitation
+        password_hash=hash_password(password),
+        is_active=True,
+        email_verified=False,
+        verification_status='pending',
+        medical_registration_no=med_reg_no,
+    )
+    db.session.add(doctor)
+    matched_inv.used_by_doctor_id = doctor_id
+    matched_inv.used_at = now_utc
+    db.session.commit()
 
     logger.info('Doctor signup: user_id=%s email=%s invitation=%s',
                 doctor_id, _redact(normalized_email), matched_inv.id)
