@@ -1,5 +1,6 @@
 # ── Python / Backend ─────────────────────────────────────────────────────────
 backend/.env
+/.env
 backend/venv/
 backend/__pycache__/
 backend/**/__pycache__/

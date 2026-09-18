@@ -10,9 +10,11 @@ import {
 interface AppState {
   // Auth
   user: User | null
+  authHydrating: boolean
   isDemo: boolean
   loginUser: (user: User) => void
   logout: () => void
+  setAuthHydrating: (v: boolean) => void
   setDemo: (v: boolean) => void
 
   // Orders
@@ -63,12 +65,14 @@ interface AppState {
 
 export const useStore = create<AppState>((set, _get) => ({
   user: null,
+  authHydrating: !!localStorage.getItem('mh_jwt'),
   isDemo: false,
   loginUser: (user) => set({ user }),
   logout: () => {
     localStorage.removeItem('mh_jwt')
-    set({ user: null, orders: [] })
+    set({ user: null, orders: [], authHydrating: false })
   },
+  setAuthHydrating: (v) => set({ authHydrating: v }),
   setDemo: (v) => set({ isDemo: v }),
 
   orders: [],

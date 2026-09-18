@@ -13,6 +13,7 @@ import logging
 import smtplib
 import socket as _socket
 import ssl as _ssl
+import urllib.error as _urllib_error
 import urllib.parse as _urllib_parse
 import urllib.request as _urllib_request
 from email.mime.multipart import MIMEMultipart
@@ -270,6 +271,8 @@ class HTTPSTransport:
                 self._send_mailgun(to, subject, body_text, body_html)
             else:
                 raise RuntimeError(f'Unknown EMAIL_API_PROVIDER: {self._provider!r}')
+        except RuntimeError:
+            raise  # Already an application-level error from _send_* — don't double-wrap
         except Exception as exc:
             logger.error('HTTPS email delivery failed: provider=%s exc=%s',
                          self._provider, type(exc).__name__)
@@ -293,9 +296,12 @@ class HTTPSTransport:
             },
             method='POST',
         )
-        with _urllib_request.urlopen(req, timeout=30) as resp:
-            if resp.status not in (200, 201):
-                raise RuntimeError(f'Resend API returned HTTP {resp.status}')
+        try:
+            with _urllib_request.urlopen(req, timeout=30):
+                pass  # 2xx success — urlopen raises HTTPError for 4xx/5xx
+        except _urllib_error.HTTPError as exc:
+            logger.error('Resend API HTTP error: status=%d', exc.code)
+            raise RuntimeError('EMAIL_DELIVERY_FAILED') from exc
 
     def _send_sendgrid(self, to: str, subject: str, body_text: str, body_html: str | None) -> None:
         payload: dict = {
@@ -315,9 +321,12 @@ class HTTPSTransport:
             },
             method='POST',
         )
-        with _urllib_request.urlopen(req, timeout=30) as resp:
-            if resp.status not in (200, 202):
-                raise RuntimeError(f'SendGrid API returned HTTP {resp.status}')
+        try:
+            with _urllib_request.urlopen(req, timeout=30) as resp:
+                pass  # 202 success — urlopen raises HTTPError for 4xx/5xx
+        except _urllib_error.HTTPError as exc:
+            logger.error('SendGrid API HTTP error: status=%d', exc.code)
+            raise RuntimeError('EMAIL_DELIVERY_FAILED') from exc
 
     def _send_mailgun(self, to: str, subject: str, body_text: str, body_html: str | None) -> None:
         if not self._domain:
@@ -340,9 +349,12 @@ class HTTPSTransport:
             },
             method='POST',
         )
-        with _urllib_request.urlopen(req, timeout=30) as resp:
-            if resp.status != 200:
-                raise RuntimeError(f'Mailgun API returned HTTP {resp.status}')
+        try:
+            with _urllib_request.urlopen(req, timeout=30) as resp:
+                pass  # 200 success — urlopen raises HTTPError for 4xx/5xx
+        except _urllib_error.HTTPError as exc:
+            logger.error('Mailgun API HTTP error: status=%d', exc.code)
+            raise RuntimeError('EMAIL_DELIVERY_FAILED') from exc
 
     def test_auth(self) -> dict:
         """

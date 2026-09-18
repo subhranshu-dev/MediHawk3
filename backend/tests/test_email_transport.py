@@ -1,12 +1,15 @@
 """
-Tests for the email test-send endpoint across transport types.
+Tests for the email test-send endpoint and HTTPSTransport urllib error handling.
 
 Covers:
   - HTTPSTransport (EMAIL_PROVIDER=https) routes through test-send
   - SMTPTransport (EMAIL_PROVIDER=smtp) routes through test-send
   - Missing transport returns EMAIL_NOT_CONFIGURED, not SMTP_NOT_CONFIGURED
   - SMTP_NOT_CONFIGURED is never raised when an HTTPS provider is active
+  - urllib.error.HTTPError (4xx/5xx from provider) → EMAIL_DELIVERY_FAILED
+  - HTTP status code is logged (not swallowed) via the specific HTTPError catch
 """
+import urllib.error
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -128,3 +131,84 @@ class TestEmailTestSend:
         assert data['error']['code'] == 'EMAIL_DELIVERY_FAILED'
         # Must NOT return SMTP_NOT_CONFIGURED even on failure
         assert 'SMTP_NOT_CONFIGURED' not in str(data)
+
+
+class TestHTTPSTransportHTTPError:
+    """
+    urllib.error.HTTPError (4xx/5xx from the provider API) must be caught specifically
+    so the HTTP status code can be logged and EMAIL_DELIVERY_FAILED is returned.
+    Before the fix, HTTPError propagated through send() as a generic Exception, making
+    Resend 401/403/422 errors indistinguishable in server logs.
+    """
+
+    def _make_http_error(self, status: int) -> urllib.error.HTTPError:
+        return urllib.error.HTTPError(
+            url='https://api.resend.com/emails',
+            code=status,
+            msg=f'HTTP {status}',
+            hdrs=None,  # type: ignore[arg-type]
+            fp=None,
+        )
+
+    def test_resend_401_raises_delivery_failed(self):
+        """Resend 401 Unauthorized → RuntimeError('EMAIL_DELIVERY_FAILED')."""
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        with patch('urllib.request.urlopen', side_effect=self._make_http_error(401)):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('doc@hospital.in', 'Test', 'body')
+
+    def test_resend_422_raises_delivery_failed(self):
+        """Resend 422 Unprocessable → RuntimeError('EMAIL_DELIVERY_FAILED')."""
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        with patch('urllib.request.urlopen', side_effect=self._make_http_error(422)):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('doc@hospital.in', 'Test', 'body')
+
+    def test_resend_429_raises_delivery_failed(self):
+        """Resend 429 Too Many Requests → RuntimeError('EMAIL_DELIVERY_FAILED')."""
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        with patch('urllib.request.urlopen', side_effect=self._make_http_error(429)):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('doc@hospital.in', 'Test', 'body')
+
+    def test_resend_500_raises_delivery_failed(self):
+        """Resend 500 Server Error → RuntimeError('EMAIL_DELIVERY_FAILED')."""
+        from services.email_service import HTTPSTransport
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        with patch('urllib.request.urlopen', side_effect=self._make_http_error(500)):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('doc@hospital.in', 'Test', 'body')
+
+    def test_resend_200_does_not_raise(self):
+        """Resend 200 OK → no exception raised."""
+        from services.email_service import HTTPSTransport
+        from unittest.mock import MagicMock
+
+        t = HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='no-reply@medihawk.in', from_name='MediHawk',
+        )
+        mock_resp = MagicMock()
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        with patch('urllib.request.urlopen', return_value=mock_resp):
+            t.send('doc@hospital.in', 'Test', 'body')  # Must not raise

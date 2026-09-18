@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -7,6 +7,7 @@ import { MediHawkAtmosphere } from '@/components/ui/MediHawkAtmosphere'
 import { CursorSystem } from '@/components/ui/CursorSystem'
 import { useSimulation } from '@/hooks/useSimulation'
 import { useStore } from '@/store'
+import { authService } from '@/services/api'
 
 // Landing
 import { LandingPage } from '@/pages/landing/LandingPage'
@@ -49,7 +50,8 @@ const PAGE_TRANSITION = {
 }
 
 function RequireAuth({ children, role }: { children: React.ReactNode; role?: 'doctor' | 'admin' }) {
-  const { user } = useStore()
+  const { user, authHydrating } = useStore()
+  if (authHydrating) return null
   if (!user) return <Navigate to={role === 'admin' ? '/auth/admin' : '/auth/doctor'} replace />
   if (role && user.role !== role) return <Navigate to="/" replace />
   return <>{children}</>
@@ -153,6 +155,23 @@ function AppRoutes({ initComplete, onInitComplete }: {
 export default function App() {
   const [initComplete, setInitComplete] = useState(false)
   const handleInitComplete = useCallback(() => setInitComplete(true), [])
+  const { loginUser, setAuthHydrating } = useStore()
+
+  useEffect(() => {
+    const token = localStorage.getItem('mh_jwt')
+    if (!token) return
+    authService.verifyToken()
+      .then((data: any) => {
+        if (data.valid && data.user) loginUser(data.user)
+      })
+      .catch(() => {
+        localStorage.removeItem('mh_jwt')
+      })
+      .finally(() => {
+        setAuthHydrating(false)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <BrowserRouter>
