@@ -205,6 +205,12 @@ export const authService = {
       method: 'POST',
       body: JSON.stringify({ reset_token, new_password }),
     }),
+
+  demoLogin: (role: 'doctor' | 'admin'): Promise<LoginResponse> =>
+    request<LoginResponse>('/api/auth/demo/login', {
+      method: 'POST',
+      body: JSON.stringify({ role }),
+    }),
 }
 
 // ─── Orders ────────────────────────────────────────────────────────────────────

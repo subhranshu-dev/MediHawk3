@@ -145,6 +145,9 @@ def create_app(env: str | None = None) -> Flask:
                 logger.error('Schema migration failed: %s', _mig_exc)
                 raise  # do not silently start with a broken schema
 
+            if app.config.get('DEMO_AUTH_ENABLED'):
+                _seed_demo_accounts(app)
+
         if mode == 'live':
             logger.warning(
                 'APP_MODE=live. Real drone commands are ENABLED. '
@@ -152,6 +155,49 @@ def create_app(env: str | None = None) -> Flask:
             )
 
     return app
+
+
+def _seed_demo_accounts(app: Flask) -> None:
+    """
+    Seed read-only demo accounts for SIH prototype mode (DEMO_AUTH_ENABLED=true).
+    Idempotent — skips creation if accounts already exist.
+    Demo accounts use a fixed bcrypt hash of a random internal string;
+    they are NOT loginable via the real password endpoint.
+    """
+    from extensions import db as _db
+    from models.doctor import Doctor
+    from models.admin import Admin
+    from services.auth_service import hash_password
+
+    DEMO_PW = 'DEMO-INTERNAL-NOT-A-REAL-PASSWORD-DO-NOT-USE'
+
+    with app.app_context():
+        if not _db.session.get(Doctor, 'doc-demo-001'):
+            demo_doctor = Doctor(
+                id='doc-demo-001',
+                name='Demo Doctor',
+                email='demo.doctor@medihawk.local',
+                phone='0000000001',
+                password_hash=hash_password(DEMO_PW),
+                email_verified=True,
+                verification_status='verified',
+                is_active=True,
+            )
+            _db.session.add(demo_doctor)
+            logger.info('Demo doctor account seeded')
+
+        if not _db.session.get(Admin, 'admin-demo-001'):
+            demo_admin = Admin(
+                id='admin-demo-001',
+                name='Demo Admin',
+                email='demo.admin@medihawk.local',
+                password_hash=hash_password(DEMO_PW),
+                is_active=True,
+            )
+            _db.session.add(demo_admin)
+            logger.info('Demo admin account seeded')
+
+        _db.session.commit()
 
 
 def _register_blueprints(app: Flask) -> None:

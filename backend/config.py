@@ -145,6 +145,13 @@ class BaseConfig:
     # ── Admin signup (invite-code controlled) ─────────────────────────────────
     ADMIN_INVITE_CODE: str = os.environ.get('ADMIN_INVITE_CODE', '')
 
+    # ── Prototype demo authentication ────────────────────────────────────────
+    # Set DEMO_AUTH_ENABLED=true ONLY for SIH prototype deployment.
+    # Production default is false — real authentication remains the only path.
+    # When true, POST /api/auth/demo/login issues JWTs for demo accounts.
+    # Demo accounts are seeded on startup. Real auth is never bypassed.
+    DEMO_AUTH_ENABLED: bool = os.environ.get('DEMO_AUTH_ENABLED', 'false').lower() in ('true', '1', 'yes')
+
     # ── Password policy ───────────────────────────────────────────────────────
     PASSWORD_MIN_LENGTH: int = int(os.environ.get('PASSWORD_MIN_LENGTH', '8'))
     PASSWORD_RESET_EXPIRY_MINUTES: int = int(os.environ.get('PASSWORD_RESET_EXPIRY_MINUTES', '15'))
