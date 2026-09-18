@@ -131,6 +131,11 @@ class BaseConfig:
     EMAIL_API_PROVIDER: str = os.environ.get('EMAIL_API_PROVIDER', 'resend')
     EMAIL_API_KEY: str = os.environ.get('EMAIL_API_KEY', '')
     EMAIL_API_DOMAIN: str = os.environ.get('EMAIL_API_DOMAIN', '')  # required for Mailgun
+    # Override the From address used by HTTPS transport (Resend/SendGrid/Mailgun).
+    # SMTP_FROM_EMAIL (gmail.com) is rejected by Resend — set this to a verified
+    # sender domain, e.g. onboarding@resend.dev (Resend sandbox) or noreply@yourdomain.com.
+    # Ignored when EMAIL_PROVIDER=smtp (SMTP always uses SMTP_FROM_EMAIL).
+    EMAIL_API_FROM: str = os.environ.get('EMAIL_API_FROM', '')
 
     # ── Admin signup (invite-code controlled) ─────────────────────────────────
     ADMIN_INVITE_CODE: str = os.environ.get('ADMIN_INVITE_CODE', '')

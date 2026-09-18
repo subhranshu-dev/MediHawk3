@@ -567,7 +567,11 @@ def init_transport(app) -> None:
         # Explicit HTTPS-only mode — SMTP is not attempted
         api_provider = (cfg.get('EMAIL_API_PROVIDER') or 'resend').lower()
         api_key = cfg.get('EMAIL_API_KEY', '')
-        from_email = cfg.get('SMTP_FROM_EMAIL', '')
+        # EMAIL_API_FROM overrides the sender for HTTPS providers.
+        # Resend/SendGrid reject @gmail.com senders — set EMAIL_API_FROM to a verified
+        # sender domain (e.g. onboarding@resend.dev for Resend sandbox testing).
+        smtp_from = cfg.get('SMTP_FROM_EMAIL', '')
+        from_email = cfg.get('EMAIL_API_FROM', '').strip() or smtp_from
         from_name = cfg.get('SMTP_FROM_NAME', 'MediHawk')
         domain = cfg.get('EMAIL_API_DOMAIN', '')
         if not api_key:
@@ -619,10 +623,13 @@ def init_transport(app) -> None:
     if api_key:
         api_provider = (cfg.get('EMAIL_API_PROVIDER') or 'resend').lower()
         domain = cfg.get('EMAIL_API_DOMAIN', '')
+        # EMAIL_API_FROM overrides the sender for the HTTPS fallback transport.
+        # SMTP uses SMTP_FROM_EMAIL (gmail.com); Resend needs a verified sender domain.
+        https_from_email = cfg.get('EMAIL_API_FROM', '').strip() or from_email
         https_fallback = HTTPSTransport(
             provider=api_provider,
             api_key=api_key,
-            from_email=from_email,
+            from_email=https_from_email,
             from_name=from_name,
             domain=domain,
         )
