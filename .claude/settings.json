@@ -176,7 +176,11 @@
       "Bash(VITE_API_BASE_URL=https://medihawk3.onrender.com npm run build)",
       "Bash(python -m pytest -q --tb=short)",
       "Bash(python3 -m pytest -q --tb=short)",
-      "Bash(venv/bin/pytest -q --tb=short)"
+      "Bash(venv/bin/pytest -q --tb=short)",
+      "Bash(git commit -m ' *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('scripts:', json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\); print\\('name:', d.get\\('name'\\)\\); print\\('version:', d.get\\('version'\\)\\)\")",
+      "Bash(git push *)",
+      "Bash(DATABASE_URL=postgresql+psycopg://mh_fresh:freshpw123@localhost:5434/mh_fresh FLASK_ENV=production SECRET_KEY=test-secret-32-chars-long-for-this JWT_SECRET_KEY=test-jwt-secret-32-chars-long-ok OTP_HMAC_SECRET=test-otp-hmac-secret-32chars-ok ADMIN_INVITE_CODE=test-code venv/bin/python -c ' *)"
     ],
     "additionalDirectories": [
       "/tmp"
