@@ -8,6 +8,8 @@ Covers:
   - SMTP_NOT_CONFIGURED is never raised when an HTTPS provider is active
   - urllib.error.HTTPError (4xx/5xx from provider) → EMAIL_DELIVERY_FAILED
   - HTTP status code is logged (not swallowed) via the specific HTTPError catch
+  - FallbackTransport: SMTP primary, HTTPS fallback on network errors only
+  - FallbackTransport: auth errors do NOT trigger HTTPS fallback
 """
 import urllib.error
 from unittest.mock import MagicMock, patch
@@ -212,3 +214,92 @@ class TestHTTPSTransportHTTPError:
         mock_resp.__exit__ = MagicMock(return_value=False)
         with patch('urllib.request.urlopen', return_value=mock_resp):
             t.send('doc@hospital.in', 'Test', 'body')  # Must not raise
+
+
+# ── FallbackTransport tests ────────────────────────────────────────────────────
+
+class TestFallbackTransport:
+    """FallbackTransport: SMTP primary, HTTPS fallback on network errors only."""
+
+    def _make_smtp(self):
+        from services.email_service import SMTPTransport
+        return SMTPTransport(
+            host='smtp.gmail.com', port=587,
+            username='test@example.com', password='pw',
+            from_email='test@example.com', from_name='Test',
+            use_tls=True,
+        )
+
+    def _make_https(self):
+        from services.email_service import HTTPSTransport
+        return HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='test@example.com', from_name='Test',
+        )
+
+    def _make_fallback(self):
+        from services.email_service import FallbackTransport
+        return FallbackTransport(smtp=self._make_smtp(), https=self._make_https())
+
+    def test_smtp_success_no_fallback(self):
+        """SMTP succeeds → HTTPS never called."""
+        t = self._make_fallback()
+        with patch.object(t._smtp, 'send') as smtp_send, \
+             patch.object(t._https, 'send') as https_send:
+            t.send('r@x.com', 'subj', 'body')
+        smtp_send.assert_called_once()
+        https_send.assert_not_called()
+
+    def test_smtp_network_error_triggers_fallback(self):
+        """SMTP_NETWORK_ERROR → HTTPS fallback called."""
+        t = self._make_fallback()
+        with patch.object(t._smtp, 'send', side_effect=RuntimeError('SMTP_NETWORK_ERROR')), \
+             patch.object(t._https, 'send') as https_send:
+            t.send('r@x.com', 'subj', 'body')
+        https_send.assert_called_once()
+
+    def test_smtp_auth_error_does_not_fallback(self):
+        """EMAIL_DELIVERY_FAILED (auth/TLS error) → NOT falling back, re-raised."""
+        t = self._make_fallback()
+        with patch.object(t._smtp, 'send', side_effect=RuntimeError('EMAIL_DELIVERY_FAILED')), \
+             patch.object(t._https, 'send') as https_send:
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('r@x.com', 'subj', 'body')
+        https_send.assert_not_called()
+
+    def test_smtp_network_error_https_also_fails(self):
+        """SMTP_NETWORK_ERROR + HTTPS also fails → EMAIL_DELIVERY_FAILED propagated."""
+        t = self._make_fallback()
+        with patch.object(t._smtp, 'send', side_effect=RuntimeError('SMTP_NETWORK_ERROR')), \
+             patch.object(t._https, 'send', side_effect=RuntimeError('EMAIL_DELIVERY_FAILED')):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('r@x.com', 'subj', 'body')
+
+    def test_smtp_enetunreach_raises_network_error(self):
+        """errno 101 (ENETUNREACH) from SMTP → SMTP_NETWORK_ERROR."""
+        from services.email_service import SMTPTransport
+        smtp = self._make_smtp()
+        err = OSError('Network is unreachable')
+        err.errno = 101
+        with patch('smtplib.SMTP', side_effect=err):
+            with pytest.raises(RuntimeError, match='SMTP_NETWORK_ERROR'):
+                smtp.send('r@x.com', 'subj', 'body')
+
+    def test_smtp_timeout_raises_network_error(self):
+        """Connection timeout → SMTP_NETWORK_ERROR."""
+        from services.email_service import SMTPTransport
+        import socket
+        smtp = self._make_smtp()
+        with patch('smtplib.SMTP', side_effect=socket.timeout('timed out')):
+            with pytest.raises(RuntimeError, match='SMTP_NETWORK_ERROR'):
+                smtp.send('r@x.com', 'subj', 'body')
+
+    def test_fallback_test_auth_includes_fallback_info(self):
+        """FallbackTransport.test_auth includes fallback_provider and fallback_note."""
+        t = self._make_fallback()
+        with patch.object(t._smtp, 'test_auth', return_value={'connection': 'ok', 'authentication': 'ok'}):
+            result = t.test_auth()
+        assert result['fallback_transport'] == 'HTTPS'
+        assert result['fallback_provider'] == 'resend'
+        assert result['fallback_api_key_configured'] is True
+        assert 'fallback_note' in result

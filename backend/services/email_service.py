@@ -70,6 +70,35 @@ class SMTPTransport:
                 with smtplib.SMTP_SSL(self._host, self._port, timeout=30) as smtp:
                     smtp.login(self._username, self._password)
                     smtp.sendmail(self._from_email, [to], msg.as_bytes())
+        except (_socket.timeout, TimeoutError) as exc:
+            # Network-level failure — FallbackTransport may retry via HTTPS
+            logger.error(
+                'SMTP delivery timeout: host=%s port=%d user=%s',
+                self._host, self._port, _redact_username(self._username),
+            )
+            raise RuntimeError('SMTP_NETWORK_ERROR') from exc
+        except ConnectionRefusedError as exc:
+            logger.error(
+                'SMTP delivery refused: host=%s port=%d',
+                self._host, self._port,
+            )
+            raise RuntimeError('SMTP_NETWORK_ERROR') from exc
+        except OSError as exc:
+            # errno 101 ENETUNREACH, 111 ECONNREFUSED, 110 ETIMEDOUT — network blocked
+            _NETWORK_ERRNOS = (101, 110, 111, 113)  # ENETUNREACH, ETIMEDOUT, ECONNREFUSED, EHOSTUNREACH
+            if exc.errno in _NETWORK_ERRNOS:
+                logger.error(
+                    'SMTP delivery network error: host=%s port=%d errno=%d',
+                    self._host, self._port, exc.errno,
+                )
+                raise RuntimeError('SMTP_NETWORK_ERROR') from exc
+            logger.error(
+                'SMTP delivery failed: exc=%s host=%s port=%d user=%s transport=%s',
+                type(exc).__name__, self._host, self._port,
+                _redact_username(self._username),
+                'STARTTLS' if self._use_tls else 'SSL',
+            )
+            raise RuntimeError('EMAIL_DELIVERY_FAILED') from exc
         except Exception as exc:
             logger.error(
                 'SMTP delivery failed: exc=%s host=%s port=%d user=%s transport=%s',
@@ -223,6 +252,53 @@ class CollectingTransport:
 
     def clear(self) -> None:
         self.sent.clear()
+
+
+class FallbackTransport:
+    """
+    SMTP-primary transport with automatic HTTPS fallback.
+
+    SMTP is always tried first.  The HTTPS provider is only activated when
+    SMTP raises SMTP_NETWORK_ERROR — i.e. the SMTP port is blocked at the
+    network level (errno 101 ENETUNREACH / 111 ECONNREFUSED / timeout).
+
+    HTTPS fallback does NOT activate for:
+      - SMTP auth failures        → fix SMTP credentials
+      - SMTP TLS/cert errors      → fix TLS config
+      - SMTP protocol errors      → fix SMTP config
+      - HTTPS delivery failures   → raises EMAIL_DELIVERY_FAILED
+
+    Activated when: EMAIL_PROVIDER=smtp and EMAIL_API_KEY is set.
+    Fallback activation is logged: "SMTP NETWORK_ERROR — HTTPS fallback activated"
+    """
+
+    def __init__(self, smtp: 'SMTPTransport', https: 'HTTPSTransport') -> None:
+        self._smtp = smtp
+        self._https = https
+
+    def send(self, to: str, subject: str, body_text: str, body_html: str | None = None) -> None:
+        try:
+            self._smtp.send(to, subject, body_text, body_html)
+        except RuntimeError as exc:
+            if str(exc) == 'SMTP_NETWORK_ERROR':
+                logger.warning(
+                    'SMTP NETWORK_ERROR — HTTPS fallback activated | provider=%s to=%s',
+                    self._https._provider, to,
+                )
+                self._https.send(to, subject, body_text, body_html)
+                return
+            raise  # auth error / TLS error — do not fall back
+
+    def test_auth(self) -> dict:
+        result = self._smtp.test_auth()
+        result['fallback_transport'] = 'HTTPS'
+        result['fallback_provider'] = self._https._provider
+        result['fallback_api_key_configured'] = bool(self._https._api_key)
+        result['fallback_note'] = (
+            'HTTPS fallback activates only on SMTP network-level failures '
+            '(port blocked / unreachable). Auth errors do not trigger fallback.'
+        )
+        return result
 
 
 class HTTPSTransport:
@@ -463,11 +539,20 @@ class HTTPSTransport:
 
 # ── Module-level transport singleton ─────────────────────────────────────────
 
-_transport: SMTPTransport | HTTPSTransport | CollectingTransport | None = None
+_transport: SMTPTransport | HTTPSTransport | FallbackTransport | CollectingTransport | None = None
 
 
 def init_transport(app) -> None:
-    """Initialize mail transport from Flask app config. Call once in app factory."""
+    """
+    Initialize mail transport from Flask app config. Call once in app factory.
+
+    Transport selection:
+      EMAIL_PROVIDER=smtp (default)
+        + EMAIL_API_KEY set  → FallbackTransport (SMTP primary, HTTPS on network failure)
+        + EMAIL_API_KEY unset → SMTPTransport only
+      EMAIL_PROVIDER=https   → HTTPSTransport only (no SMTP attempted)
+      TESTING=true           → CollectingTransport (no real mail)
+    """
     global _transport
     cfg = app.config
 
@@ -479,6 +564,7 @@ def init_transport(app) -> None:
     provider = (cfg.get('EMAIL_PROVIDER') or 'smtp').lower()
 
     if provider == 'https':
+        # Explicit HTTPS-only mode — SMTP is not attempted
         api_provider = (cfg.get('EMAIL_API_PROVIDER') or 'resend').lower()
         api_key = cfg.get('EMAIL_API_KEY', '')
         from_email = cfg.get('SMTP_FROM_EMAIL', '')
@@ -496,12 +582,12 @@ def init_transport(app) -> None:
             domain=domain,
         )
         logger.info(
-            'Email: HTTPSTransport configured | provider=%s from=%s api_key_set=yes',
+            'Email: HTTPSTransport configured (HTTPS-only mode) | provider=%s from=%s api_key_set=yes',
             api_provider, from_email or 'NOT_SET',
         )
         return
 
-    # SMTP path
+    # SMTP primary path
     if not cfg.get('SMTP_HOST'):
         _transport = None
         logger.warning('Email: SMTP_HOST not configured — OTP email will fail')
@@ -517,7 +603,7 @@ def init_transport(app) -> None:
     use_ssl = cfg.get('SMTP_USE_SSL', False)
     use_tls = cfg.get('SMTP_USE_TLS', True) and not use_ssl
 
-    _transport = SMTPTransport(
+    smtp = SMTPTransport(
         host=host,
         port=port,
         username=username,
@@ -527,6 +613,31 @@ def init_transport(app) -> None:
         use_tls=use_tls,
     )
     transport_mode = 'STARTTLS' if use_tls else 'SSL'
+
+    # Check if HTTPS fallback is also configured
+    api_key = cfg.get('EMAIL_API_KEY', '')
+    if api_key:
+        api_provider = (cfg.get('EMAIL_API_PROVIDER') or 'resend').lower()
+        domain = cfg.get('EMAIL_API_DOMAIN', '')
+        https_fallback = HTTPSTransport(
+            provider=api_provider,
+            api_key=api_key,
+            from_email=from_email,
+            from_name=from_name,
+            domain=domain,
+        )
+        _transport = FallbackTransport(smtp=smtp, https=https_fallback)
+        logger.info(
+            'Email: FallbackTransport | SMTP primary host=%s port=%d user=%s mode=%s '
+            '| HTTPS fallback provider=%s (activates on SMTP network failure only)',
+            host, port,
+            _redact_username(username) if username else 'NOT_SET',
+            transport_mode, api_provider,
+        )
+        return
+
+    # SMTP only — no fallback configured
+    _transport = smtp
     logger.info(
         'Email: SMTPTransport configured | host=%s port=%d user=%s transport=%s from=%s pw_set=%s',
         host, port,
@@ -537,7 +648,7 @@ def init_transport(app) -> None:
     )
 
 
-def get_transport() -> SMTPTransport | HTTPSTransport | CollectingTransport | None:
+def get_transport() -> SMTPTransport | HTTPSTransport | FallbackTransport | CollectingTransport | None:
     return _transport
 
 
