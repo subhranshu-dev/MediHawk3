@@ -349,9 +349,20 @@ Plus from previous session (commit `3cc4e51`):
 
 ---
 
-## STATUS: CODE COMPLETE — AWAITING OPERATIONAL STEPS
+## STATUS: ALL CODE DEPLOYED — AWAITING OPERATIONAL STEPS
 
-All code fixes are implemented and tested. Production E2E is blocked by two operational steps:
+All three commits pushed and **deployed live on Render** (confirmed 2026-09-18 11:24 UTC).
+
+Production smoke test (new deployment):
+```
+GET  /api/health                          → {"status":"healthy","database":"connected"}
+POST /api/auth/doctor/signup (no invite)  → 422 VALIDATION_ERROR
+POST /api/auth/doctor/signup (bad invite) → 403 INVALID_INVITATION_CODE
+GET  /api/admin/smtp/diagnostic (no auth) → 401 AUTH_REQUIRED
+POST /api/order (no auth)                 → 401 AUTH_REQUIRED
+```
+
+Production E2E is blocked by two operational steps:
 
 1. **Regenerate Gmail App Password** (5 minutes)
 2. **Set new password on Render + trigger deploy** (5 minutes)
