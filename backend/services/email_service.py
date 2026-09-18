@@ -5,8 +5,6 @@ SMTP credentials are loaded from Flask app config — never hardcoded.
 For automated tests, CollectingTransport intercepts mail without sending real email.
 The OTP plaintext is passed to send_otp_email() but is never stored or logged here.
 """
-from __future__ import annotations
-
 import base64 as _base64
 import json as _json
 import logging
@@ -73,7 +71,6 @@ class SMTPTransport:
                     smtp.login(self._username, self._password)
                     smtp.sendmail(self._from_email, [to], msg.as_bytes())
         except Exception as exc:
-            # Log only sanitized info — never credentials
             logger.error(
                 'SMTP delivery failed: exc=%s host=%s port=%d user=%s transport=%s',
                 type(exc).__name__, self._host, self._port,
@@ -322,7 +319,7 @@ class HTTPSTransport:
             method='POST',
         )
         try:
-            with _urllib_request.urlopen(req, timeout=30) as resp:
+            with _urllib_request.urlopen(req, timeout=30):
                 pass  # 202 success — urlopen raises HTTPError for 4xx/5xx
         except _urllib_error.HTTPError as exc:
             logger.error('SendGrid API HTTP error: status=%d', exc.code)
@@ -350,7 +347,7 @@ class HTTPSTransport:
             method='POST',
         )
         try:
-            with _urllib_request.urlopen(req, timeout=30) as resp:
+            with _urllib_request.urlopen(req, timeout=30):
                 pass  # 200 success — urlopen raises HTTPError for 4xx/5xx
         except _urllib_error.HTTPError as exc:
             logger.error('Mailgun API HTTP error: status=%d', exc.code)
