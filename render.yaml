@@ -47,15 +47,23 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false        # set to your Vercel frontend URL
-      # Optional — leave blank to disable email in initial deployments:
+      # SMTP — required for OTP email delivery.
+      # Set SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM_EMAIL in the dashboard.
+      # SMTP_PASSWORD: for Gmail, use an App Password (16 chars, spaces optional — stripped automatically).
       - key: SMTP_HOST
-        sync: false
+        sync: false        # set in dashboard: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
       - key: SMTP_USERNAME
-        sync: false
+        sync: false        # set in dashboard: your Gmail address
       - key: SMTP_PASSWORD
-        sync: false
+        sync: false        # set in dashboard: Gmail App Password (spaces stripped automatically)
       - key: SMTP_FROM_EMAIL
-        sync: false
+        sync: false        # set in dashboard: same as SMTP_USERNAME for Gmail
+      - key: SMTP_FROM_NAME
+        value: "MediHawk"
+      - key: SMTP_USE_TLS
+        value: "true"
     healthCheckPath: /api/health
 
 databases:

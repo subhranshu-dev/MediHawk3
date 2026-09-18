@@ -15,6 +15,14 @@ from email.mime.text import MIMEText
 logger = logging.getLogger(__name__)
 
 
+def _redact_username(username: str) -> str:
+    """Return a log-safe redacted form of an email address."""
+    if '@' in username:
+        local, domain = username.split('@', 1)
+        return f'{local[:2]}***@{domain}'
+    return username[:2] + '***' if len(username) > 2 else '***'
+
+
 # ── Transport classes ─────────────────────────────────────────────────────────
 
 class SMTPTransport:
@@ -59,8 +67,61 @@ class SMTPTransport:
                     smtp.sendmail(self._from_email, [to], msg.as_bytes())
         except Exception as exc:
             # Log only sanitized info — never credentials
-            logger.error('SMTP delivery failed: %s (host=%s port=%d)', type(exc).__name__, self._host, self._port)
+            logger.error(
+                'SMTP delivery failed: exc=%s host=%s port=%d user=%s transport=%s',
+                type(exc).__name__, self._host, self._port,
+                _redact_username(self._username),
+                'STARTTLS' if self._use_tls else 'SSL',
+            )
             raise RuntimeError('EMAIL_DELIVERY_FAILED') from exc
+
+    def test_auth(self) -> dict:
+        """
+        Test SMTP connection and authentication without sending a message.
+        Returns a safe diagnostic dict — NEVER includes credentials.
+        Raises RuntimeError('SMTP_CONNECTION_FAILED') or RuntimeError('SMTP_AUTH_FAILED').
+        """
+        result: dict = {
+            'host': self._host,
+            'port': self._port,
+            'transport': 'STARTTLS' if self._use_tls else 'SSL',
+            'username_configured': bool(self._username),
+            'password_configured': bool(self._password),
+            'from_email': self._from_email,
+            'connection': 'untested',
+            'authentication': 'untested',
+        }
+        try:
+            if self._use_tls:
+                with smtplib.SMTP(self._host, self._port, timeout=10) as smtp:
+                    smtp.ehlo()
+                    smtp.starttls()
+                    result['connection'] = 'ok'
+                    smtp.login(self._username, self._password)
+                    result['authentication'] = 'ok'
+            else:
+                with smtplib.SMTP_SSL(self._host, self._port, timeout=10) as smtp:
+                    result['connection'] = 'ok'
+                    smtp.login(self._username, self._password)
+                    result['authentication'] = 'ok'
+        except smtplib.SMTPAuthenticationError as exc:
+            result['authentication'] = 'failed'
+            result['auth_error_class'] = type(exc).__name__
+            logger.error(
+                'SMTP auth failed: exc=%s host=%s port=%d user=%s',
+                type(exc).__name__, self._host, self._port,
+                _redact_username(self._username),
+            )
+            raise RuntimeError('SMTP_AUTH_FAILED') from exc
+        except Exception as exc:
+            result['connection'] = 'failed'
+            result['connection_error_class'] = type(exc).__name__
+            logger.error(
+                'SMTP connection failed: exc=%s host=%s port=%d',
+                type(exc).__name__, self._host, self._port,
+            )
+            raise RuntimeError('SMTP_CONNECTION_FAILED') from exc
+        return result
 
 
 class CollectingTransport:
@@ -97,16 +158,31 @@ def init_transport(app) -> None:
         _transport = CollectingTransport()
         logger.debug('Email: CollectingTransport active (test mode)')
     elif cfg.get('SMTP_HOST'):
+        host = cfg['SMTP_HOST']
+        port = cfg['SMTP_PORT']
+        username = cfg['SMTP_USERNAME']
+        password = cfg['SMTP_PASSWORD']
+        from_email = cfg['SMTP_FROM_EMAIL']
+        from_name = cfg.get('SMTP_FROM_NAME', 'MediHawk')
+        use_tls = cfg.get('SMTP_USE_TLS', True)
+
         _transport = SMTPTransport(
-            host=cfg['SMTP_HOST'],
-            port=cfg['SMTP_PORT'],
-            username=cfg['SMTP_USERNAME'],
-            password=cfg['SMTP_PASSWORD'],
-            from_email=cfg['SMTP_FROM_EMAIL'],
-            from_name=cfg.get('SMTP_FROM_NAME', 'MediHawk'),
-            use_tls=cfg.get('SMTP_USE_TLS', True),
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            from_email=from_email,
+            from_name=from_name,
+            use_tls=use_tls,
         )
-        logger.info('Email: SMTPTransport configured (host=%s)', cfg['SMTP_HOST'])
+        logger.info(
+            'Email: SMTPTransport configured | host=%s port=%d user=%s transport=%s from=%s pw_set=%s',
+            host, port,
+            _redact_username(username) if username else 'NOT_SET',
+            'STARTTLS' if use_tls else 'SSL',
+            from_email or 'NOT_SET',
+            'yes' if password else 'NO',
+        )
     else:
         _transport = None
         logger.warning('Email: SMTP_HOST not configured — OTP email will fail')

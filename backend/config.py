@@ -107,10 +107,18 @@ class BaseConfig:
     # ── SMTP ──────────────────────────────────────────────────────────────────
     SMTP_HOST: str = os.environ.get('SMTP_HOST', '')
     SMTP_PORT: int = int(os.environ.get('SMTP_PORT', '587'))
-    SMTP_USERNAME: str = os.environ.get('SMTP_USERNAME', '')
-    SMTP_PASSWORD: str = os.environ.get('SMTP_PASSWORD', '')
-    SMTP_FROM_EMAIL: str = os.environ.get('SMTP_FROM_EMAIL', '')
-    SMTP_FROM_NAME: str = os.environ.get('SMTP_FROM_NAME', 'MediHawk')
+    SMTP_USERNAME: str = os.environ.get('SMTP_USERNAME', '').strip()
+    # Gmail App Passwords are displayed with spaces ("xxxx xxxx xxxx xxxx").
+    # Strip all spaces so both formats ("xxxxxxxxxxxx" and "xxxx xxxx xxxx xxxx")
+    # authenticate correctly.  Do not lowercase — passwords are case-sensitive.
+    SMTP_PASSWORD: str = os.environ.get('SMTP_PASSWORD', '').replace(' ', '')
+    # Default sender to SMTP_USERNAME when SMTP_FROM_EMAIL is not explicitly set.
+    # Gmail requires the From address to match the authenticated account.
+    SMTP_FROM_EMAIL: str = (
+        os.environ.get('SMTP_FROM_EMAIL', '').strip()
+        or os.environ.get('SMTP_USERNAME', '').strip()
+    )
+    SMTP_FROM_NAME: str = os.environ.get('SMTP_FROM_NAME', 'MediHawk').strip()
     SMTP_USE_TLS: bool = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
 
     # ── Admin signup (invite-code controlled) ─────────────────────────────────

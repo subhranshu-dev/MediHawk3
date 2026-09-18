@@ -15,12 +15,17 @@ Admin doctor-verification endpoints:
   POST /api/admin/verification/<doctor_id>/reject   — set REJECTED
   POST /api/admin/verification/<doctor_id>/suspend  — set SUSPENDED
 
+Admin SMTP diagnostic:
+  GET  /api/admin/smtp/diagnostic                   — test SMTP config (no credentials returned)
+  POST /api/admin/smtp/test-send                    — send test email to a specified address
+
 Security properties:
   - Admin ID comes from the verified JWT (g.user_id), never from request body
   - Invitation raw code is returned once at creation and never stored
   - Only the HMAC-SHA256 digest is persisted
   - Used invitations cannot be revoked
   - verification_status transitions are audited (verified_at, verified_by_admin_id)
+  - SMTP diagnostic never returns credentials (password, secrets, DATABASE_URL)
 """
 from __future__ import annotations
 
@@ -237,6 +242,122 @@ def suspend_doctor(doctor_id: str):
 
     logger.warning('Doctor suspended: doctor_id=%s admin=%s', doctor_id, g.user_id)
     return ok({'message': 'Doctor account suspended.', 'doctor': _doctor_detail(doctor)})
+
+
+# ── SMTP diagnostic ───────────────────────────────────────────────────────────
+
+@verification_bp.route('/api/admin/smtp/diagnostic', methods=['GET'])
+@require_admin
+def smtp_diagnostic():
+    """
+    Test SMTP connection and authentication.  Never returns credentials.
+
+    Response (safe fields only):
+      {
+        "configured": true,
+        "host": "smtp.gmail.com",
+        "port": 587,
+        "transport": "STARTTLS",
+        "username_configured": true,
+        "password_configured": true,
+        "from_email": "...",
+        "connection": "ok",
+        "authentication": "ok"
+      }
+    """
+    from services.email_service import get_transport, SMTPTransport as _SMTPTransport
+
+    transport = get_transport()
+
+    if transport is None:
+        return ok({
+            'configured': False,
+            'host': current_app.config.get('SMTP_HOST') or None,
+            'port': current_app.config.get('SMTP_PORT'),
+            'transport': None,
+            'username_configured': bool(current_app.config.get('SMTP_USERNAME')),
+            'password_configured': bool(current_app.config.get('SMTP_PASSWORD')),
+            'from_email': current_app.config.get('SMTP_FROM_EMAIL') or None,
+            'connection': 'not_configured',
+            'authentication': 'not_configured',
+        })
+
+    if not isinstance(transport, _SMTPTransport):
+        # CollectingTransport (test mode)
+        return ok({
+            'configured': False,
+            'transport': 'collecting',
+            'connection': 'test_mode',
+            'authentication': 'test_mode',
+            'note': 'SMTP not active — using CollectingTransport (test mode)',
+        })
+
+    try:
+        result = transport.test_auth()
+        result['configured'] = True
+        logger.info('SMTP diagnostic: connection=%s auth=%s admin=%s',
+                    result.get('connection'), result.get('authentication'), g.user_id)
+        return ok(result)
+    except RuntimeError as exc:
+        err_code = str(exc)
+        result = {
+            'configured': True,
+            'host': current_app.config.get('SMTP_HOST'),
+            'port': current_app.config.get('SMTP_PORT'),
+            'transport': 'STARTTLS' if current_app.config.get('SMTP_USE_TLS', True) else 'SSL',
+            'username_configured': bool(current_app.config.get('SMTP_USERNAME')),
+            'password_configured': bool(current_app.config.get('SMTP_PASSWORD')),
+            'from_email': current_app.config.get('SMTP_FROM_EMAIL') or None,
+            'connection': 'failed' if err_code == 'SMTP_CONNECTION_FAILED' else 'ok',
+            'authentication': 'failed' if err_code == 'SMTP_AUTH_FAILED' else 'unknown',
+            'error': err_code,
+        }
+        logger.error('SMTP diagnostic failed: %s admin=%s', err_code, g.user_id)
+        return ok(result)
+
+
+@verification_bp.route('/api/admin/smtp/test-send', methods=['POST'])
+@require_admin
+def smtp_test_send():
+    """
+    Send a test email to a specified address.  Requires admin JWT.
+    Never returns credentials.
+
+    Body: { "to": "admin@example.com" }
+    """
+    from services.email_service import get_transport, SMTPTransport as _SMTPTransport
+
+    data = request.get_json(silent=True) or {}
+    to_email = (data.get('to') or '').strip()
+    if not to_email or '@' not in to_email:
+        return validation_error('Missing or invalid field: to (must be a valid email address)')
+
+    transport = get_transport()
+    if transport is None or not isinstance(transport, _SMTPTransport):
+        return error('SMTP_NOT_CONFIGURED', 'SMTP is not configured on this server.', 503)
+
+    try:
+        transport.send(
+            to=to_email,
+            subject='MediHawk — SMTP Test Email',
+            body_text=(
+                'This is a MediHawk SMTP diagnostic test email.\n\n'
+                'If you received this, SMTP is configured correctly.\n\n'
+                'Do not share this email — it contains no OTP or credentials.'
+            ),
+            body_html=(
+                '<div style="font-family:sans-serif;max-width:480px;margin:0 auto">'
+                '<h2 style="color:#C62832">MediHawk SMTP Test</h2>'
+                '<p>This is a diagnostic test email from MediHawk.</p>'
+                '<p style="color:green;font-weight:bold">✓ SMTP is configured correctly.</p>'
+                '<p style="color:#999;font-size:12px">Do not share this email.</p>'
+                '</div>'
+            ),
+        )
+        logger.info('SMTP test email sent: to=%s admin=%s', to_email, g.user_id)
+        return ok({'sent': True, 'to': to_email, 'message': 'Test email sent successfully.'})
+    except RuntimeError:
+        return error('EMAIL_DELIVERY_FAILED', 'Test email delivery failed. Check SMTP configuration.', 503)
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
