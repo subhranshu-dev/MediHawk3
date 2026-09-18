@@ -348,7 +348,9 @@ def admin_signup():
     normalized_email = normalize_email(email_raw)
 
     if Admin.query.filter_by(email=normalized_email).first():
-        return error('EMAIL_EXISTS', 'An account with this email already exists.', 409)
+        return error('EMAIL_EXISTS',
+                     'An admin account with this email already exists. '
+                     'Try logging in, or use the forgot-password flow to reset your password.', 409)
 
     admin_id = f'adm-{uuid.uuid4().hex[:8]}'
     admin = Admin(
@@ -370,13 +372,31 @@ def admin_signup():
     except RuntimeError as exc:
         cancel_pending_otp(normalized_email, purpose)
         exc_code = str(exc)
+        # Admin accounts have no email_verified requirement at login.
+        # Account IS committed — admin can log in immediately despite SMTP failure.
         if exc_code == 'EMAIL_NOT_CONFIGURED':
-            return error(
-                'EMAIL_DELIVERY_NOT_CONFIGURED',
-                'Email delivery is not configured on this server. Contact support.',
-                503,
-            )
-        return error('EMAIL_DELIVERY_FAILED', 'Account created but verification email failed. Contact support.', 503)
+            logger.warning('Admin signup: SMTP not configured, email verification skipped for admin_id=%s', admin_id)
+            return created({
+                'message': (
+                    'Account created. Email delivery is not configured on this server — '
+                    'email verification is not required for admin accounts. '
+                    'You can log in now with your credentials.'
+                ),
+                'user_id': admin_id,
+                'email_verified': False,
+                'login_available': True,
+            })
+        logger.warning('Admin signup: SMTP delivery failed, admin can still log in. admin_id=%s', admin_id)
+        return created({
+            'message': (
+                'Account created. Verification email could not be delivered — '
+                'email verification is not required for admin accounts. '
+                'You can log in now with your credentials.'
+            ),
+            'user_id': admin_id,
+            'email_verified': False,
+            'login_available': True,
+        })
 
     logger.info('Admin signup: user_id=%s email=%s', admin_id, _redact(normalized_email))
     return created({'message': 'Account created. Check your email for a verification code.', 'user_id': admin_id})

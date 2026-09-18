@@ -277,6 +277,53 @@ class TestAdminSignup:
         resp = client_with_invite.post(ADMIN_SIGNUP_URL, json={**VALID_ADMIN, 'invite_code': ''})
         assert resp.status_code == 422  # Empty = missing field validation
 
+    def test_admin_can_login_after_signup_even_when_smtp_fails(self, app_with_invite, client_with_invite):
+        """
+        Production bootstrap path: when SMTP is broken the admin signup still
+        commits the account because Admin has no email_verified requirement at
+        login.  The response must still be 201 and the admin must be able to
+        log in immediately.
+        """
+        import services.email_service as _es
+        from unittest.mock import MagicMock
+
+        failing_transport = MagicMock()
+        # admin_signup catches RuntimeError — must match what SMTPTransport.send() raises
+        failing_transport.send.side_effect = RuntimeError('EMAIL_DELIVERY_FAILED')
+
+        original = _es._transport
+        _es._transport = failing_transport
+
+        payload = {**VALID_ADMIN, 'email': 'smtp.fail.admin@medihawk.in'}
+        try:
+            resp = client_with_invite.post(ADMIN_SIGNUP_URL, json=payload)
+        finally:
+            _es._transport = original
+
+        # Account must be created despite SMTP failure
+        assert resp.status_code == 201, resp.get_json()
+        data = resp.get_json()
+        assert data['success'] is True
+        assert data.get('login_available') is True
+
+        # Admin must be able to log in without email verification
+        login_resp = client_with_invite.post(LOGIN_URL, json={
+            'email': payload['email'],
+            'password': payload['password'],
+            'role': 'admin',
+        })
+        assert login_resp.status_code == 200, login_resp.get_json()
+        assert 'token' in login_resp.get_json()
+
+    def test_email_exists_error_suggests_login(self, client_with_invite):
+        """EMAIL_EXISTS message must guide admin to try logging in."""
+        client_with_invite.post(ADMIN_SIGNUP_URL, json=VALID_ADMIN)
+        resp = client_with_invite.post(ADMIN_SIGNUP_URL, json=VALID_ADMIN)
+        assert resp.status_code == 409
+        msg = resp.get_json()['error']['message'].lower()
+        # Must hint at login or forgot-password, not just "already exists"
+        assert 'log in' in msg or 'forgot' in msg
+
     def test_verify_email_wrong_otp_returns_401(self, client_with_invite):
         client_with_invite.post(ADMIN_SIGNUP_URL, json=VALID_ADMIN)
         resp = client_with_invite.post(VERIFY_EMAIL_URL, json={
