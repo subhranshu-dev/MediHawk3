@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import logging
 import smtplib
+import socket as _socket
+import ssl as _ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -56,13 +58,13 @@ class SMTPTransport:
             msg.attach(MIMEText(body_html, 'html', 'utf-8'))
         try:
             if self._use_tls:
-                with smtplib.SMTP(self._host, self._port, timeout=10) as smtp:
+                with smtplib.SMTP(self._host, self._port, timeout=30) as smtp:
                     smtp.ehlo()
                     smtp.starttls()
                     smtp.login(self._username, self._password)
                     smtp.sendmail(self._from_email, [to], msg.as_bytes())
             else:
-                with smtplib.SMTP_SSL(self._host, self._port, timeout=10) as smtp:
+                with smtplib.SMTP_SSL(self._host, self._port, timeout=30) as smtp:
                     smtp.login(self._username, self._password)
                     smtp.sendmail(self._from_email, [to], msg.as_bytes())
         except Exception as exc:
@@ -77,9 +79,12 @@ class SMTPTransport:
 
     def test_auth(self) -> dict:
         """
-        Test SMTP connection and authentication without sending a message.
-        Returns a safe diagnostic dict — NEVER includes credentials.
-        Raises RuntimeError('SMTP_CONNECTION_FAILED') or RuntimeError('SMTP_AUTH_FAILED').
+        Staged SMTP diagnostic: DNS → TCP → SMTP greeting → STARTTLS → AUTH.
+        Always returns a result dict — never raises, never returns credentials.
+
+        Result keys:
+          dns, tcp, smtp_greeting, starttls, connection, authentication
+          error_category, error_type (on failure stages only)
         """
         result: dict = {
             'host': self._host,
@@ -88,39 +93,106 @@ class SMTPTransport:
             'username_configured': bool(self._username),
             'password_configured': bool(self._password),
             'from_email': self._from_email,
+            'dns': 'untested',
+            'tcp': 'untested',
+            'smtp_greeting': 'untested',
+            'starttls': 'n/a' if not self._use_tls else 'untested',
             'connection': 'untested',
             'authentication': 'untested',
         }
+
+        # Stage 1: DNS
+        try:
+            addrs = _socket.getaddrinfo(self._host, self._port, proto=_socket.IPPROTO_TCP)
+            result['dns'] = 'ok'
+            result['dns_address_count'] = len(addrs)
+        except _socket.gaierror as exc:
+            result['dns'] = 'failed'
+            result['connection'] = 'failed'
+            result['error_category'] = 'DNS_ERROR'
+            result['error_type'] = type(exc).__name__
+            logger.error('SMTP diagnostic DNS failed: host=%s exc=%s', self._host, type(exc).__name__)
+            return result
+
+        # Stage 2: TCP connect (isolated — no SMTP protocol yet)
+        try:
+            sock = _socket.create_connection((self._host, self._port), timeout=15)
+            sock.close()
+            result['tcp'] = 'ok'
+        except (_socket.timeout, TimeoutError) as exc:
+            result['tcp'] = 'failed'
+            result['connection'] = 'failed'
+            result['error_category'] = 'CONNECTION_TIMEOUT'
+            result['error_type'] = type(exc).__name__
+            logger.error('SMTP diagnostic TCP timeout: host=%s port=%d', self._host, self._port)
+            return result
+        except ConnectionRefusedError as exc:
+            result['tcp'] = 'failed'
+            result['connection'] = 'failed'
+            result['error_category'] = 'CONNECTION_REFUSED'
+            result['error_type'] = type(exc).__name__
+            logger.error('SMTP diagnostic TCP refused: host=%s port=%d', self._host, self._port)
+            return result
+        except OSError as exc:
+            result['tcp'] = 'failed'
+            result['connection'] = 'failed'
+            result['error_category'] = 'NETWORK_ERROR'
+            result['error_type'] = type(exc).__name__
+            result['errno'] = exc.errno
+            logger.error('SMTP diagnostic TCP failed: host=%s port=%d exc=%s errno=%s',
+                         self._host, self._port, type(exc).__name__, exc.errno)
+            return result
+
+        # Stage 3: Full SMTP session (greeting → STARTTLS/SSL → AUTH)
         try:
             if self._use_tls:
-                with smtplib.SMTP(self._host, self._port, timeout=10) as smtp:
+                with smtplib.SMTP(self._host, self._port, timeout=30) as smtp:
                     smtp.ehlo()
+                    result['smtp_greeting'] = 'ok'
                     smtp.starttls()
+                    result['starttls'] = 'ok'
                     result['connection'] = 'ok'
+                    smtp.ehlo()
                     smtp.login(self._username, self._password)
                     result['authentication'] = 'ok'
             else:
-                with smtplib.SMTP_SSL(self._host, self._port, timeout=10) as smtp:
+                with smtplib.SMTP_SSL(self._host, self._port, timeout=30) as smtp:
+                    result['smtp_greeting'] = 'ok'
                     result['connection'] = 'ok'
                     smtp.login(self._username, self._password)
                     result['authentication'] = 'ok'
         except smtplib.SMTPAuthenticationError as exc:
+            result['connection'] = 'ok'
             result['authentication'] = 'failed'
-            result['auth_error_class'] = type(exc).__name__
-            logger.error(
-                'SMTP auth failed: exc=%s host=%s port=%d user=%s',
-                type(exc).__name__, self._host, self._port,
-                _redact_username(self._username),
-            )
-            raise RuntimeError('SMTP_AUTH_FAILED') from exc
+            result['error_category'] = 'SMTP_AUTH_ERROR'
+            result['error_type'] = type(exc).__name__
+            result['smtp_code'] = getattr(exc, 'smtp_code', None)
+            logger.error('SMTP diagnostic auth failed: host=%s port=%d user=%s smtp_code=%s',
+                         self._host, self._port,
+                         _redact_username(self._username),
+                         getattr(exc, 'smtp_code', None))
+        except _ssl.SSLCertVerificationError as exc:
+            result['connection'] = 'failed'
+            result['error_category'] = 'TLS_CERT_ERROR'
+            result['error_type'] = type(exc).__name__
+            logger.error('SMTP diagnostic TLS cert error: host=%s exc=%s', self._host, type(exc).__name__)
+        except _ssl.SSLError as exc:
+            result['connection'] = 'failed'
+            result['error_category'] = 'TLS_ERROR'
+            result['error_type'] = type(exc).__name__
+            logger.error('SMTP diagnostic TLS error: host=%s exc=%s', self._host, type(exc).__name__)
+        except smtplib.SMTPConnectError as exc:
+            result['connection'] = 'failed'
+            result['error_category'] = 'SMTP_CONNECT_ERROR'
+            result['error_type'] = type(exc).__name__
+            logger.error('SMTP diagnostic SMTP connect error: host=%s exc=%s', self._host, type(exc).__name__)
         except Exception as exc:
             result['connection'] = 'failed'
-            result['connection_error_class'] = type(exc).__name__
-            logger.error(
-                'SMTP connection failed: exc=%s host=%s port=%d',
-                type(exc).__name__, self._host, self._port,
-            )
-            raise RuntimeError('SMTP_CONNECTION_FAILED') from exc
+            result['error_category'] = 'UNKNOWN_ERROR'
+            result['error_type'] = type(exc).__name__
+            logger.error('SMTP diagnostic unknown error: host=%s port=%d exc=%s',
+                         self._host, self._port, type(exc).__name__)
+
         return result
 
 

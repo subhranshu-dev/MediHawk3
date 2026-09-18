@@ -292,28 +292,14 @@ def smtp_diagnostic():
             'note': 'SMTP not active — using CollectingTransport (test mode)',
         })
 
-    try:
-        result = transport.test_auth()
-        result['configured'] = True
-        logger.info('SMTP diagnostic: connection=%s auth=%s admin=%s',
-                    result.get('connection'), result.get('authentication'), g.user_id)
-        return ok(result)
-    except RuntimeError as exc:
-        err_code = str(exc)
-        result = {
-            'configured': True,
-            'host': current_app.config.get('SMTP_HOST'),
-            'port': current_app.config.get('SMTP_PORT'),
-            'transport': 'STARTTLS' if current_app.config.get('SMTP_USE_TLS', True) else 'SSL',
-            'username_configured': bool(current_app.config.get('SMTP_USERNAME')),
-            'password_configured': bool(current_app.config.get('SMTP_PASSWORD')),
-            'from_email': current_app.config.get('SMTP_FROM_EMAIL') or None,
-            'connection': 'failed' if err_code == 'SMTP_CONNECTION_FAILED' else 'ok',
-            'authentication': 'failed' if err_code == 'SMTP_AUTH_FAILED' else 'unknown',
-            'error': err_code,
-        }
-        logger.error('SMTP diagnostic failed: %s admin=%s', err_code, g.user_id)
-        return ok(result)
+    result = transport.test_auth()
+    result['configured'] = True
+    logger.info(
+        'SMTP diagnostic: dns=%s tcp=%s connection=%s auth=%s admin=%s',
+        result.get('dns'), result.get('tcp'),
+        result.get('connection'), result.get('authentication'), g.user_id,
+    )
+    return ok(result)
 
 
 @verification_bp.route('/api/admin/smtp/test-send', methods=['POST'])
