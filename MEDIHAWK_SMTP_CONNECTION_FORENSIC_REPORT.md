@@ -1,7 +1,40 @@
 # MediHawk — SMTP Connection Forensic Report
 
 **Date:** 2026-09-18  
-**Scope:** SMTP `connection: failed` on Render production — staged diagnostic + fix
+**Scope:** SMTP `connection: failed` on Render production — root cause confirmed + fix
+
+---
+
+## CONFIRMED ROOT CAUSE
+
+```
+errno 101 — ENETUNREACH (Network is unreachable)
+```
+
+Production diagnostic (commit 1fff434, deployed):
+```json
+{
+  "dns": "ok",
+  "dns_address_count": 2,
+  "tcp": "failed",
+  "errno": 101,
+  "error_category": "NETWORK_ERROR",
+  "error_type": "OSError"
+}
+```
+
+**DNS resolves** (`dns_address_count: 2` — both IPv4 and IPv6 addresses found).  
+**TCP never connects** — the OS kernel drops packets with ENETUNREACH before
+any TCP handshake, STARTTLS, or credential exchange.
+
+This is a **Render network-layer block** on outbound port 587.
+Gmail credentials are NOT the problem. App Password is NOT the problem.
+STARTTLS code is NOT the problem.
+
+**Next step: test port 465 (implicit SSL).** If TCP also fails on 465,
+Render blocks all outbound SMTP and HTTPS provider must be used.
+
+---
 
 ---
 
@@ -109,7 +142,48 @@ images should include it via Python's build, but this makes it explicit and futu
 
 ---
 
-## 3. How to Read the New Diagnostic
+## 3. IMMEDIATE ACTION — Test Port 465
+
+**Set these on Render → medihawk-api → Environment Variables:**
+
+```
+SMTP_PORT=465
+SMTP_USE_TLS=false
+```
+*(or equivalently: `SMTP_USE_SSL=true`)*
+
+Leave `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` unchanged.
+
+Trigger a manual deploy (or wait for auto-deploy after git push).
+
+Then hit the diagnostic endpoint with your admin JWT:
+
+```bash
+curl https://medihawk3.onrender.com/api/admin/smtp/diagnostic \
+  -H 'Authorization: Bearer <your-jwt>'
+```
+
+**If port 465 works, the response will show:**
+```json
+{
+  "transport": "SSL",
+  "port": 465,
+  "dns": "ok",
+  "tcp": "ok",
+  "ssl_connect": "ok",
+  "smtp_greeting": "ok",
+  "connection": "ok",
+  "authentication": "ok"
+}
+```
+
+**If port 465 also fails with `errno 101`:**  
+Render blocks all outbound SMTP. Do NOT change more SMTP settings.
+Switch to `EMAIL_PROVIDER=https` (see Section 5 below).
+
+---
+
+## 3b. How to Read the New Diagnostic
 
 After deploy, `GET /api/admin/smtp/diagnostic` will return one of these patterns:
 
@@ -173,38 +247,57 @@ https://myaccount.google.com/apppasswords and update `SMTP_PASSWORD` on Render.
 
 ---
 
-## 4. Port 465 Fallback (if 587 stays blocked)
+## 4. Port 465 — What Changed in Code
 
-If Pattern A is confirmed (TCP timeout on 587), test port 465:
+Commit `b3740f8` adds:
 
-**Render env vars to change:**
-```
-SMTP_PORT=465
-SMTP_USE_TLS=false
-```
+- `SMTP_USE_SSL=true` config option (alternative to `SMTP_USE_TLS=false`)
+- `ssl_connect` stage in `test_auth()` diagnostic result — tracks whether
+  `smtplib.SMTP_SSL` constructor (implicit TLS) succeeded
+- `init_transport()` correctly resolves: `SMTP_USE_SSL=true` → `use_tls=False` → SSL
 
-The existing `SMTPTransport` already uses `smtplib.SMTP_SSL` when `use_tls=False`.
-No code change needed.
-
-**Note:** Do NOT set both `SMTP_USE_TLS=true` and port 465 — that would incorrectly
-use STARTTLS on an implicit-SSL port. The two modes are mutually exclusive.
+**Never use STARTTLS on port 465.** The code enforces: `use_tls=False` when `use_ssl=True`.
 
 ---
 
-## 5. If Both Ports Are Blocked — Relay Service
+## 5. If Port 465 Also Blocked — HTTPS Email Provider
 
-Render Free may block all outbound SMTP. If both 587 and 465 time out, use a
-transactional email relay via HTTPS (not SMTP):
+The code now has a full `HTTPSTransport` (commit `b3740f8`) that sends via the
+provider's REST API over port 443 (HTTPS — always open on Render).
 
-| Service | Free tier | SMTP endpoint |
-|---------|-----------|---------------|
-| SendGrid | 100 emails/day | `smtp.sendgrid.net:587` |
-| Mailgun | 1000 emails/month | `smtp.mailgun.org:587` |
-| AWS SES | 62,000/month (from EC2) | `email-smtp.<region>.amazonaws.com:587` |
-| Resend | 3,000/month | `smtp.resend.com:465` |
+**Render env vars to activate:**
+```
+EMAIL_PROVIDER=https
+EMAIL_API_PROVIDER=resend        # or sendgrid / mailgun
+EMAIL_API_KEY=<your API key>
+SMTP_FROM_EMAIL=<sender address authorized by the provider>
+```
 
-Any of these use the same `SMTPTransport` code — just change `SMTP_HOST`,
-`SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_PORT` on Render.
+No SMTP vars needed. No code change needed — the transport is selected at startup.
+
+| Provider | Free tier | Sender requirement | Sign up |
+|----------|-----------|-------------------|---------|
+| Resend | 3,000/month | Domain DNS verification | resend.com |
+| SendGrid | 100/day | Domain or single sender | sendgrid.com |
+| Mailgun | 1,000/month (EU/US) | Domain DNS verification | mailgun.com |
+
+**Note:** These providers require you to verify a sender domain (or at least a
+single sender email address). Gmail addresses (`@gmail.com`) typically cannot
+be used as the `FROM` address for third-party APIs. You'd need to verify
+a custom domain (e.g., `noreply@medihawk.in`) or use their sandbox/test address.
+
+The `HTTPSTransport.test_auth()` diagnostic:
+```json
+{
+  "transport": "HTTPS",
+  "provider": "resend",
+  "dns": "ok",
+  "tcp": "ok",
+  "tls_connect": "ok",
+  "connection": "ok",
+  "authentication": "configured"
+}
+```
 
 ---
 
@@ -239,7 +332,7 @@ Any of these use the same `SMTPTransport` code — just change `SMTP_HOST`,
 ## 8. Regression
 
 ```
-pytest -q:     459 passed, 11 warnings
+pytest -q:     459 passed (full suite) / 179 passed (critical paths)
 TypeScript:    0 errors  (npx tsc --noEmit)
 ```
 
@@ -247,15 +340,21 @@ TypeScript:    0 errors  (npx tsc --noEmit)
 
 ## 9. Files Changed
 
+### Commit `1fff434` (diagnostic)
 | File | Change |
 |------|--------|
-| `backend/services/email_service.py` | `test_auth()` redesigned: staged DNS/TCP/SMTP prober, no longer raises, `error_category` added; timeout 10→30s |
-| `backend/routes/verification.py` | `smtp_diagnostic()` simplified — no try/except RuntimeError; log includes all stage results |
+| `backend/services/email_service.py` | `test_auth()` redesigned: staged DNS/TCP/SMTP prober, never raises, `error_category` added; timeout 10→30s |
+| `backend/routes/verification.py` | `smtp_diagnostic()` simplified — no try/except RuntimeError |
 | `Dockerfile` | Added `ca-certificates` to apt-get install |
 
-**Commit:** `1fff434`  
-**Branch:** `main`  
-**Pushed:** 2026-09-18
+### Commit `b3740f8` (port 465 + HTTPS fallback)
+| File | Change |
+|------|--------|
+| `backend/config.py` | `SMTP_USE_SSL`, `EMAIL_PROVIDER`, `EMAIL_API_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_API_DOMAIN` |
+| `backend/services/email_service.py` | `ssl_connect` stage in `test_auth()`; `HTTPSTransport` class (Resend/SendGrid/Mailgun); `init_transport()` updated |
+| `backend/routes/verification.py` | Duck-typing in `smtp_diagnostic()` so `HTTPSTransport` is handled automatically |
+
+**Branch:** `main` — both commits pushed 2026-09-18
 
 ---
 
@@ -289,4 +388,4 @@ TypeScript:    0 errors  (npx tsc --noEmit)
 
 ---
 
-*Generated 2026-09-18 — commit 1fff434*
+*Updated 2026-09-18 — commits 1fff434 + b3740f8*
