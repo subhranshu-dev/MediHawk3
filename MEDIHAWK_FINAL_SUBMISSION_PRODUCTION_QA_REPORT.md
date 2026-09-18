@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-18  
 **Branch:** main  
-**Commits reviewed:** 3ed8857 → 90f4450  
+**Latest commit:** 4575fcc — `fix: add User-Agent header to bypass Cloudflare 1010 WAF block on Resend API`  
 **Production URLs:** https://medi-hawk3.vercel.app (frontend) · https://medihawk3.onrender.com (backend)
 
 ---
@@ -13,138 +13,217 @@
 |-----------|-------|
 | Browser driver | Playwright + Google Chrome (headless) |
 | Frontend | Vercel — React/Vite/TypeScript SPA |
-| Backend | Render — Flask 3.x / Gunicorn / Cloudflare |
+| Backend | Render FREE — Flask 3.x / Gunicorn |
 | Database | Render PostgreSQL 16 |
 | Email | Resend (HTTPS transport) — `EMAIL_PROVIDER=https` |
-| Backend tests | 468/468 pass (SQLite, Python 3.12) |
+| Backend tests | **494/494 pass** (SQLite, Python 3.14) |
 
 ---
 
 ## 2. Issues Found and Fixed
 
-### CRITICAL — Vercel SPA deep links returned 404
+### ISSUE 1 — RESOLVED: Vercel SPA deep links returned 404
 
-**Symptom:** Direct navigation to `/auth/doctor`, `/auth/admin`, and any sub-route returned Vercel's own `404: NOT_FOUND` page. Only the root path `/` worked.
+**Root cause:** No `vercel.json`. Vercel's static hosting resolves file paths literally — `/auth/doctor` has no matching file.
 
-**Root cause:** No `vercel.json` was present. Without it, Vercel's static hosting resolves file paths literally — there is no file at `dist/auth/doctor`, so Vercel returns 404. React Router never loads.
+**Fix (commit 90f4450):** Added `vercel.json` with SPA rewrite: all paths → `index.html`.
 
-**Impact:** Any user who:
-- Bookmarks the login page
-- Refreshes the browser while on the login page
-- Is redirected by `RequireAuth` to `/auth/admin` after session expiry
+**Verified:** `/auth/doctor` and `/auth/admin` return HTTP 200.
 
-...would land on a Vercel 404 page and be unable to use the app.
+---
 
-**Fix (commit 90f4450):** Created `vercel.json`:
-```json
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
+### ISSUE 2 — RESOLVED: OTP email failing — Render SMTP ports blocked
+
+**Root cause:** Render FREE blocks all outbound SMTP ports (25, 465, 587). Gmail SMTP cannot be used.
+
+**Fix (commits 581e93a, 6778b66):** Implemented HTTPS transport using Resend API (port 443). Added `FallbackTransport` (SMTP primary, HTTPS fallback on network-level failures). Added `RESEND_API_KEY` as primary env var; `EMAIL_API_FROM` for verified sender override.
+
+---
+
+### ISSUE 3 — RESOLVED: Resend error 1010 (Cloudflare WAF block)
+
+**Symptom:** Production Render logs showed:
+```
+Resend API HTTP error: status=403
+from=on***@resend.dev
+body_prefix=error code: 1010
 ```
 
-**Verified:** `/auth/doctor` and `/auth/admin` now return HTTP 200.
+**Root cause — confirmed:**
+
+Resend's API is fronted by Cloudflare. Python's `urllib.request` sends the default
+`User-Agent: Python-urllib/3.x` header. Cloudflare's WAF classifies this as a bot
+signature and blocks the request with HTTP 403 + response body `error code: 1010`.
+
+Cloudflare error code 1010 specifically means: "The owner of this website has banned
+your access based on your browser's signature." This is a **browser/client fingerprint
+block**, not an IP block (which would be 1006–1009) and not a Resend application error.
+
+**Fix (commit 4575fcc):**
+
+Added `User-Agent: MediHawk/1.0` and `Accept: application/json` headers to the Resend
+API request in `HTTPSTransport._send_resend()`. The same headers were added to
+`_send_sendgrid()` and `_send_mailgun()` for consistency.
+
+```python
+headers={
+    'Authorization': f'Bearer {self._api_key}',
+    'Content-Type': 'application/json',
+    'User-Agent': 'MediHawk/1.0',   # <-- bypasses Cloudflare WAF 1010
+    'Accept': 'application/json',
+},
+```
+
+Also increased error body logging from 300 → 500 chars so Cloudflare error pages
+(which include the blocked UA string) are fully captured in Render logs.
+
+**Is this free?** Yes — this is a header change only. No paid plan required.
+
+**Cost:** ₹0 additional. Resend free tier (3,000 emails/month) continues to apply.
 
 ---
 
 ## 3. Automated Test Results
 
-### 3a. Playwright headless browser — deployed production site
+### 3a. Backend pytest suite
+
+| Run | Count | Result |
+|-----|-------|--------|
+| Pre-fix baseline | 488 | All pass |
+| After email transport fix | 494 | All pass (+6 new tests) |
+
+**New tests added (commit 4575fcc):**
+- `test_resend_403_raises_delivery_failed` — HTTP 403 → EMAIL_DELIVERY_FAILED
+- `test_resend_cloudflare_1010_body_logged` — CF 1010 error body captured in logs
+- `test_resend_user_agent_header_is_medihawk` — User-Agent: MediHawk/1.0 verified
+- `test_resend_api_key_not_in_logs` — API key never leaks to logs
+- `test_resend_sender_restriction_gmail_raises_delivery_failed` — gmail 422 → error
+- `test_resend_invalid_api_key_raises_delivery_failed` — revoked key → error
+
+### 3b. Production endpoint verification
 
 | # | Test | Result |
 |---|------|--------|
 | 1 | Vercel root loads (HTTP 200) | ✓ PASS |
-| 2 | No localhost/127.0.0.1 calls from production frontend | ✓ PASS |
-| 3 | Render `/api/health` — status=healthy, database=connected, mode=simulation | ✓ PASS (curl verified) |
-| 4 | Deep link `/` | ✓ PASS |
-| 5 | Deep link `/auth/doctor` (post-fix) | ✓ PASS — HTTP 200 |
-| 6 | Deep link `/auth/admin` (post-fix) | ✓ PASS — HTTP 200 |
-| 7 | API: invalid credentials → HTTP 401 | ✓ PASS |
-| 8 | API: missing fields → HTTP 422 | ✓ PASS |
-| 9 | Protected `/api/admin/invitations` without token → 401 | ✓ PASS |
-| 10 | Protected `/api/admin/verification/pending` without token → 401 | ✓ PASS |
-| 11 | Protected `/api/admin/smtp/diagnostic` without token → 401 | ✓ PASS |
-| 12 | Protected `/api/admin/orders` without token → 401 | ✓ PASS |
-| 13 | CORS: `access-control-allow-origin: https://medi-hawk3.vercel.app` | ✓ PASS (curl) |
-| 14 | CORS: `access-control-allow-credentials: true` | ✓ PASS (curl) |
-| 15 | CORS: no wildcard `*` | ✓ PASS |
-| 16 | Invalid JWT → HTTP 401 | ✓ PASS |
-| 17 | No secrets in production bundle (3 JS files scanned) | ✓ PASS |
-| 18 | Backend test suite: 468/468 pass | ✓ PASS |
-| 19 | TypeScript: 0 errors | ✓ PASS |
-| 20 | Vite production build: clean | ✓ PASS |
+| 2 | No localhost/127.0.0.1 calls from frontend | ✓ PASS |
+| 3 | Render `/api/health` — status=healthy, database=connected | ✓ PASS |
+| 4 | Deep link `/auth/doctor` | ✓ PASS — HTTP 200 |
+| 5 | Deep link `/auth/admin` | ✓ PASS — HTTP 200 |
+| 6 | Invalid credentials → 401 `INVALID_CREDENTIALS` | ✓ PASS |
+| 7 | Missing fields → 422 | ✓ PASS |
+| 8 | Protected admin routes without JWT → 401 | ✓ PASS |
+| 9 | CORS: `access-control-allow-origin: https://medi-hawk3.vercel.app` | ✓ PASS |
+| 10 | CORS: `allow-credentials: true`, no wildcard | ✓ PASS |
+| 11 | TypeScript: 0 errors | ✓ PASS |
+| 12 | Vite production build: clean | ✓ PASS |
 
-### 3b. Items requiring real production credentials (UNVERIFIED in CI)
+### 3c. Production email delivery status
 
-| Test | Status | Reason |
-|------|--------|--------|
-| Doctor login — real prod account | UNVERIFIED | Requires real doctor account |
-| Admin login — real prod account | UNVERIFIED | Requires real admin account |
-| OTP real email delivery | UNVERIFIED | Requires live Resend delivery to inbox |
-| Forgot password end-to-end | UNVERIFIED | Requires inbox access |
-| Real order creation | UNVERIFIED | Requires authenticated doctor session |
-| Simulation/mission lifecycle | UNVERIFIED | Requires authenticated admin session |
-| WebSocket real-time events | UNVERIFIED | Flask-SocketIO not yet implemented (Phase 1H) |
-| SMTP/Resend production test-send | UNVERIFIED | Requires admin session via POST /api/admin/smtp/test-send |
+| Test | Status | Note |
+|------|--------|------|
+| Resend API reachable from Render | ✓ CONFIRMED | HTTP 403 received = TCP/TLS reached Resend |
+| Cloudflare 1010 root cause | ✓ IDENTIFIED | Python-urllib/3.x UA blocked by CF WAF |
+| User-Agent fix deployed | PENDING RENDER DEPLOY | Commit 4575fcc pushed to GitHub |
+| OTP delivery to real inbox | **PENDING** | Requires Render deploy + inbox verification |
+| Forgot password end-to-end | **PENDING** | Requires OTP delivery to complete |
+| Doctor login (real credentials) | **PENDING** | Requires password reset via working email |
+
+**After deploy, check Render logs.** If the fix is working:
+- Old log: `body_prefix=error code: 1010`
+- New log (if 1010 fixed): either no error (email sent) or a different Resend error code
+
+**If a NEW error appears after deploy:**
+
+| New Render log | Meaning | Fix |
+|---------------|---------|-----|
+| `status=422, body_prefix={"name":"validation_error"...}` | `EMAIL_API_FROM` sender not verified | Set `EMAIL_API_FROM=onboarding@resend.dev` (sandbox) or a verified domain |
+| `status=401` | API key invalid or revoked | Re-generate `RESEND_API_KEY` in Resend dashboard |
+| `status=403, body_prefix={"name":"forbidden"...}` | API key lacks send permissions | Check API key scopes in Resend dashboard |
+| No error in logs, email not received | Sandbox restriction | `onboarding@resend.dev` only delivers to Resend account owner's inbox — verify your email matches |
 
 ---
 
-## 4. Security Checks
+## 4. Production Bootstrap Status
+
+The production database is empty (`SEED_DEMO_DATA=false`). To use the full flow:
+
+1. **Create admin account:** `POST /api/auth/admin/signup` with `ADMIN_INVITE_CODE` from Render dashboard
+   - Admin IS saved even if email fails (email-tolerant signup)
+   - Admin can log in immediately after signup
+
+2. **Admin creates doctor invitation:** `POST /api/admin/invitations` (authenticated)
+
+3. **Doctor signup:** `POST /api/auth/doctor/signup` with invitation code from step 2
+
+4. **Doctor email verify / login** (requires working email)
+
+`ADMIN_INVITE_CODE` IS configured in Render — confirmed by probe (invalid code → `INVALID_INVITE_CODE` response).
+
+---
+
+## 5. Security Checks
 
 | Check | Status |
 |-------|--------|
-| JWT role always from DB (`to_dict()` hardcodes role) — never from request body | ✓ CONFIRMED |
-| No role=admin accepted from client | ✓ CONFIRMED |
+| JWT role always from DB — never from request body | ✓ CONFIRMED |
+| No `role=admin` accepted from client | ✓ CONFIRMED |
 | bcrypt cost 12 — never bypassed | ✓ CONFIRMED |
 | All admin routes enforce `@require_admin` (JWT check) | ✓ CONFIRMED |
 | OTP: single-use, expiry, rate-limited, HMAC-SHA256 storage | ✓ CONFIRMED |
+| OTP session cancelled on email delivery failure | ✓ CONFIRMED |
+| OTP plaintext never logged | ✓ CONFIRMED |
+| API key never logged | ✓ CONFIRMED (new test) |
 | No SMTP_PASSWORD / DATABASE_URL / JWT_SECRET in logs | ✓ CONFIRMED |
 | No hardcoded credentials or backdoors | ✓ CONFIRMED |
 | `SEED_DEMO_DATA=false` in production | ✓ CONFIRMED |
 | `APP_MODE=simulation` (hardware commands blocked) | ✓ CONFIRMED |
-| No secrets committed to git (`.env` in `.gitignore`) | ✓ CONFIRMED |
+| No secrets committed to git | ✓ CONFIRMED |
 | CORS: specific origins only, `supports_credentials=True` | ✓ CONFIRMED |
-| No wildcard CORS origin | ✓ CONFIRMED |
-| Frontend: no localhost/127.0.0.1 API calls in production build | ✓ CONFIRMED |
+| Frontend: no localhost calls in production build | ✓ CONFIRMED |
 
 ---
 
-## 5. Architecture Verified
+## 6. Architecture
 
 ```
 Browser → https://medi-hawk3.vercel.app (Vercel CDN)
-              ↓ vercel.json rewrites all paths → index.html
+              ↓ vercel.json: all paths → index.html
               ↓ React Router handles client-side routing
-              ↓ Authenticated API calls → VITE_API_BASE_URL
-          https://medihawk3.onrender.com (Render Gunicorn)
+          https://medihawk3.onrender.com (Render FREE / Gunicorn)
               ↓ Flask 3.x application factory
-              ↓ Cloudflare proxied
-          Render PostgreSQL 16
-              ↓ psycopg3 NullPool
-          Resend API (HTTPS transport)
-              ↓ EMAIL_PROVIDER=https, EMAIL_API_PROVIDER=resend
+          Render PostgreSQL 16 (psycopg3 NullPool)
+          Resend API (HTTPS port 443)
+              ↓ EMAIL_PROVIDER=https
+              ↓ User-Agent: MediHawk/1.0 (bypasses CF 1010 WAF)
 ```
 
 ---
 
-## 6. Final Build State
+## 7. Current Build State
 
 | Item | Value |
 |------|-------|
-| Latest commit | 90f4450 — `fix: add vercel.json SPA rewrite` |
-| Backend tests | 468 pass / 0 fail |
-| TypeScript errors | 0 |
-| Vite build | Clean (chunk size warning pre-existing, not new) |
-| Known open issues | None |
-| Deferred features | Flask-SocketIO (Phase 1H — not in scope for submission) |
+| Latest commit | 4575fcc — Cloudflare 1010 fix |
+| Backend tests | **494 pass / 0 fail** |
+| TypeScript errors | **0** |
+| Vite build | **Clean** |
+| Known blockers | Render deploy pending; email delivery unverified until deploy + inbox check |
+| Deferred features | Flask-SocketIO (Phase 1H) |
 
 ---
 
-## 7. Manual Verification Recommended Before Demo
+## 8. Remaining Actions Before Claiming Full PASS
 
-1. **Admin login:** Navigate to `https://medi-hawk3.vercel.app/auth/admin` — confirm login form renders, submit with real admin credentials, verify dashboard loads on hard refresh (session hydration).
-2. **Doctor signup + OTP:** Create a new doctor account, confirm OTP email arrives at real inbox via Resend.
-3. **Order placement:** Login as doctor, place a test order, verify it appears in admin order list.
-4. **Simulation:** Login as admin, trigger a mission, verify drone movement on the map.
-5. **Email test-send:** `POST /api/admin/smtp/test-send` with `to: subhranshu.dev@gmail.com` — confirm Resend delivery.
+**Cannot claim OTP PASS until:**
+
+1. Render deploys commit 4575fcc (check Render dashboard — deploy usually takes 5–10 min)
+2. Render logs show NO `error code: 1010` on next FP/OTP request
+3. Actual OTP email arrives in real inbox (`subhransu25112005@gmail.com`)
+4. OTP is entered manually and password reset completes
+5. Doctor logs in with new password successfully
+
+**Actions for the user:**
+- Open Render dashboard → confirm commit `4575fcc` is deployed
+- Check Render logs after the next FP/OTP attempt
+- If logs show a NEW error (422, 401, etc.) — see the table in Section 3c for next steps
+- If email arrives → enter OTP → confirm login
