@@ -14,8 +14,9 @@
 ##   VERCEL_TOKEN             — from vercel.com/account/tokens
 ##   VERCEL_ORG_ID            — from vercel.com/account → Team ID (or personal account ID)
 ##   VERCEL_PROJECT_ID        — from project Settings → General → Project ID
-##   VITE_API_BASE_URL        — your Render backend URL, e.g. https://medihawk3.onrender.com
-##                              (also set this in Vercel project environment variables)
+##   VITE_API_BASE_URL        — optional override for frontend API URL in CI build
+##                              (defaults to https://medihawk3.onrender.com if unset)
+##                              also set this in Vercel project environment variables
 ##
 
 name: Deploy
@@ -89,8 +90,8 @@ jobs:
         run: npm run build
         env:
           # VITE_API_BASE_URL is required by vite.config.ts in production mode.
-          # Add this secret in GitHub: Settings → Secrets → Actions → VITE_API_BASE_URL
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          # If the secret is unset, default to the production Render backend URL.
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://medihawk3.onrender.com' }}
 
   # ── 3. Deploy backend to Render ───────────────────────────────────────────────
   deploy-backend:
