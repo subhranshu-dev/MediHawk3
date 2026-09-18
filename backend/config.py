@@ -124,16 +124,21 @@ class BaseConfig:
     # Use when STARTTLS on port 587 is blocked (errno 101 = ENETUNREACH).
     SMTP_USE_SSL: bool = os.environ.get('SMTP_USE_SSL', 'false').lower() in ('true', '1', 'yes')
 
-    # ── HTTPS email provider (fallback when all outbound SMTP ports are blocked) ──
-    # EMAIL_PROVIDER=https enables the HTTPS transport instead of SMTP.
-    # EMAIL_API_PROVIDER selects the service: 'resend', 'sendgrid', or 'mailgun'.
+    # ── HTTPS email provider (required on Render FREE — all SMTP ports are blocked) ──
+    # Set EMAIL_PROVIDER=https to use Resend/SendGrid/Mailgun via HTTPS (port 443).
+    # EMAIL_API_PROVIDER selects the service: 'resend' (default), 'sendgrid', or 'mailgun'.
     EMAIL_PROVIDER: str = os.environ.get('EMAIL_PROVIDER', 'smtp')
     EMAIL_API_PROVIDER: str = os.environ.get('EMAIL_API_PROVIDER', 'resend')
+    # RESEND_API_KEY is the preferred env var for the Resend API key.
+    # EMAIL_API_KEY is accepted as a backward-compatible alias.
+    # Resolution: RESEND_API_KEY takes precedence; EMAIL_API_KEY used if RESEND_API_KEY is absent.
+    RESEND_API_KEY: str = os.environ.get('RESEND_API_KEY', '')
     EMAIL_API_KEY: str = os.environ.get('EMAIL_API_KEY', '')
     EMAIL_API_DOMAIN: str = os.environ.get('EMAIL_API_DOMAIN', '')  # required for Mailgun
     # Override the From address used by HTTPS transport (Resend/SendGrid/Mailgun).
-    # SMTP_FROM_EMAIL (gmail.com) is rejected by Resend — set this to a verified
-    # sender domain, e.g. onboarding@resend.dev (Resend sandbox) or noreply@yourdomain.com.
+    # Resend rejects @gmail.com senders (unverified domain) — set EMAIL_API_FROM to a
+    # verified sender address, e.g. noreply@yourdomain.com or onboarding@resend.dev
+    # (Resend sandbox — only delivers to the Resend account-owner's inbox).
     # Ignored when EMAIL_PROVIDER=smtp (SMTP always uses SMTP_FROM_EMAIL).
     EMAIL_API_FROM: str = os.environ.get('EMAIL_API_FROM', '')
 

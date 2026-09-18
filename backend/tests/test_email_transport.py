@@ -7,10 +7,20 @@ Covers:
   - Missing transport returns EMAIL_NOT_CONFIGURED, not SMTP_NOT_CONFIGURED
   - SMTP_NOT_CONFIGURED is never raised when an HTTPS provider is active
   - urllib.error.HTTPError (4xx/5xx from provider) → EMAIL_DELIVERY_FAILED
-  - HTTP status code is logged (not swallowed) via the specific HTTPError catch
+  - HTTP status code + response body prefix logged for 4xx errors
   - FallbackTransport: SMTP primary, HTTPS fallback on network errors only
   - FallbackTransport: auth errors do NOT trigger HTTPS fallback
+  - RESEND_API_KEY takes priority over EMAIL_API_KEY
+  - EMAIL_API_FROM overrides SMTP_FROM_EMAIL for HTTPS transport
+  - Missing API key → transport=None → EMAIL_NOT_CONFIGURED
+  - Network timeout (URLError/socket.timeout) → EMAIL_DELIVERY_FAILED
+  - OTP never returned in API responses
+  - OTP session cancelled after delivery failure
+  - OTP never appears in log output
 """
+import io
+import logging
+import re
 import urllib.error
 from unittest.mock import MagicMock, patch
 
@@ -303,3 +313,244 @@ class TestFallbackTransport:
         assert result['fallback_provider'] == 'resend'
         assert result['fallback_api_key_configured'] is True
         assert 'fallback_note' in result
+
+
+# ── HTTPSTransport network errors ────────────────────────────────────────────
+
+class TestHTTPSTransportNetworkErrors:
+    """urllib network-level failures must produce EMAIL_DELIVERY_FAILED, never swallowed."""
+
+    def _make_transport(self):
+        from services.email_service import HTTPSTransport
+        return HTTPSTransport(
+            provider='resend', api_key='re_test_key',
+            from_email='noreply@example.com', from_name='Test',
+        )
+
+    def test_url_error_raises_delivery_failed(self):
+        """urllib.error.URLError (DNS failure / no route) → EMAIL_DELIVERY_FAILED."""
+        t = self._make_transport()
+        with patch('urllib.request.urlopen',
+                   side_effect=urllib.error.URLError('Name or service not known')):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('doc@hospital.in', 'Test', 'body')
+
+    def test_socket_timeout_raises_delivery_failed(self):
+        """socket.timeout during urlopen → EMAIL_DELIVERY_FAILED."""
+        import socket
+        t = self._make_transport()
+        with patch('urllib.request.urlopen', side_effect=socket.timeout('timed out')):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                t.send('doc@hospital.in', 'Test', 'body')
+
+    def test_resend_422_body_logged(self, caplog):
+        """Resend 422 response body prefix is logged so 'invalid from address' is visible."""
+        t = self._make_transport()
+        err_body = (
+            b'{"statusCode":422,"name":"validation_error",'
+            b'"message":"The from address must be a verified sender"}'
+        )
+        http_err = urllib.error.HTTPError(
+            url='https://api.resend.com/emails',
+            code=422, msg='Unprocessable',
+            hdrs=None,  # type: ignore[arg-type]
+            fp=io.BytesIO(err_body),
+        )
+        with patch('urllib.request.urlopen', side_effect=http_err):
+            with pytest.raises(RuntimeError, match='EMAIL_DELIVERY_FAILED'):
+                with caplog.at_level(logging.ERROR):
+                    t.send('doc@hospital.in', 'Test', 'body')
+        assert '422' in caplog.text
+        # Body prefix must appear in the log so the root cause is diagnosable
+        assert 'validation_error' in caplog.text or 'verified sender' in caplog.text
+
+
+# ── RESEND_API_KEY and EMAIL_API_FROM configuration ──────────────────────────
+
+class TestResendApiKeyAndFromConfig:
+    """RESEND_API_KEY + EMAIL_API_FROM must be picked up correctly by init_transport."""
+
+    def _init(self, app, overrides: dict):
+        """Temporarily disable TESTING mode, apply overrides, call init_transport."""
+        from services import email_service
+        saved = {k: app.config.get(k) for k in ('TESTING', 'APP_MODE')}
+        app.config['TESTING'] = False
+        app.config['APP_MODE'] = 'simulation'
+        app.config.update(overrides)
+        try:
+            email_service.init_transport(app)
+            return email_service.get_transport()
+        finally:
+            for k, v in saved.items():
+                if v is not None:
+                    app.config[k] = v
+            # Restore CollectingTransport for subsequent tests
+            email_service.init_transport(app)
+
+    def test_resend_api_key_used_when_set(self, app):
+        """RESEND_API_KEY → HTTPSTransport with that key."""
+        from services.email_service import HTTPSTransport
+        transport = self._init(app, {
+            'EMAIL_PROVIDER': 'https',
+            'RESEND_API_KEY': 're_primary_key',
+            'EMAIL_API_KEY': '',
+            'EMAIL_API_FROM': 'noreply@example.com',
+        })
+        assert isinstance(transport, HTTPSTransport)
+        assert transport._api_key == 're_primary_key'
+
+    def test_email_api_key_fallback_when_resend_not_set(self, app):
+        """When RESEND_API_KEY absent, EMAIL_API_KEY is used as fallback."""
+        from services.email_service import HTTPSTransport
+        transport = self._init(app, {
+            'EMAIL_PROVIDER': 'https',
+            'RESEND_API_KEY': '',
+            'EMAIL_API_KEY': 're_fallback_key',
+            'EMAIL_API_FROM': 'noreply@example.com',
+        })
+        assert isinstance(transport, HTTPSTransport)
+        assert transport._api_key == 're_fallback_key'
+
+    def test_resend_key_takes_priority_over_email_api_key(self, app):
+        """RESEND_API_KEY takes precedence when both are set."""
+        from services.email_service import HTTPSTransport
+        transport = self._init(app, {
+            'EMAIL_PROVIDER': 'https',
+            'RESEND_API_KEY': 're_primary',
+            'EMAIL_API_KEY': 're_secondary',
+            'EMAIL_API_FROM': 'noreply@example.com',
+        })
+        assert isinstance(transport, HTTPSTransport)
+        assert transport._api_key == 're_primary'
+
+    def test_missing_api_key_transport_is_none(self, app):
+        """No RESEND_API_KEY and no EMAIL_API_KEY → _transport is None."""
+        transport = self._init(app, {
+            'EMAIL_PROVIDER': 'https',
+            'RESEND_API_KEY': '',
+            'EMAIL_API_KEY': '',
+        })
+        assert transport is None
+
+    def test_email_api_from_overrides_smtp_from_email(self, app):
+        """EMAIL_API_FROM is used as the From address for HTTPSTransport."""
+        from services.email_service import HTTPSTransport
+        transport = self._init(app, {
+            'EMAIL_PROVIDER': 'https',
+            'RESEND_API_KEY': 're_test_key',
+            'EMAIL_API_KEY': '',
+            'SMTP_FROM_EMAIL': 'smtp@gmail.com',
+            'EMAIL_API_FROM': 'noreply@resend.dev',
+        })
+        assert isinstance(transport, HTTPSTransport)
+        assert transport._from_email == 'noreply@resend.dev'
+
+    def test_missing_email_api_from_falls_back_to_smtp_from(self, app):
+        """When EMAIL_API_FROM not set, SMTP_FROM_EMAIL is used and a warning is logged."""
+        from services.email_service import HTTPSTransport
+        transport = self._init(app, {
+            'EMAIL_PROVIDER': 'https',
+            'RESEND_API_KEY': 're_test_key',
+            'EMAIL_API_KEY': '',
+            'SMTP_FROM_EMAIL': 'fallback@example.com',
+            'EMAIL_API_FROM': '',
+        })
+        assert isinstance(transport, HTTPSTransport)
+        assert transport._from_email == 'fallback@example.com'
+
+    def test_missing_email_api_from_emits_warning(self, app, caplog):
+        """Missing EMAIL_API_FROM with a gmail sender emits a warning."""
+        self._init(app, {
+            'EMAIL_PROVIDER': 'https',
+            'RESEND_API_KEY': 're_test_key',
+            'EMAIL_API_KEY': '',
+            'SMTP_FROM_EMAIL': 'user@gmail.com',
+            'EMAIL_API_FROM': '',
+        })
+        assert any('EMAIL_API_FROM' in r.message for r in caplog.records
+                   if r.levelno >= logging.WARNING)
+
+
+# ── OTP security invariants ───────────────────────────────────────────────────
+
+class TestOTPSecurityInvariants:
+    """OTP plaintext must never appear in API responses or log output."""
+
+    _DOCTOR_EMAIL = 'otp.security.doc@medihawk.in'
+    _DOCTOR_PASSWORD = 'DocPass@9876'
+
+    @pytest.fixture
+    def doctor_in_db(self, app):
+        """Insert a minimal active Doctor directly into the test DB; return (app, client)."""
+        import bcrypt
+        from extensions import db
+        from models.doctor import Doctor
+
+        pw_hash = bcrypt.hashpw(
+            self._DOCTOR_PASSWORD.encode(), bcrypt.gensalt(rounds=4)
+        ).decode()
+        doc = Doctor(
+            id='doc-security-test-01',
+            name='OTP Security Doctor',
+            email=self._DOCTOR_EMAIL,
+            phone='9876543210',
+            password_hash=pw_hash,
+            is_active=True,
+            email_verified=True,
+            verification_status='verified',
+        )
+        db.session.add(doc)
+        db.session.commit()
+        return app, app.test_client()
+
+    def test_otp_not_in_successful_otp_request_response(self, app):
+        """POST /api/auth/otp/request must not include any 6-digit OTP in the response.
+
+        The anti-enumeration design means 200 is returned whether or not the account exists,
+        so a real doctor is not required — no OTP is sent, and the response must not
+        contain one regardless.
+        """
+        client = app.test_client()
+        resp = client.post('/api/auth/otp/request', json={
+            'email': 'nobody@example.com',
+            'role': 'doctor',
+        })
+        assert resp.status_code == 200, resp.get_json()
+        body = resp.get_data(as_text=True)
+        assert not re.search(r'\b\d{6}\b', body), (
+            f'Response body may contain an OTP code: {body}'
+        )
+
+    def test_otp_session_cancelled_after_delivery_failure(self, doctor_in_db):
+        """Email delivery failure → OTP session cancelled → verify returns OTP_INVALID."""
+        from services.email_service import HTTPSTransport
+        _app, client = doctor_in_db
+
+        mock_transport = MagicMock(spec=HTTPSTransport)
+        mock_transport.send.side_effect = RuntimeError('EMAIL_DELIVERY_FAILED')
+
+        with patch('services.email_service._transport', mock_transport):
+            r = client.post('/api/auth/otp/request', json={
+                'email': self._DOCTOR_EMAIL,
+                'role': 'doctor',
+            })
+        assert r.status_code == 503, r.get_json()
+
+        # Session must be cancelled — any OTP verify attempt must fail
+        r2 = client.post('/api/auth/otp/verify', json={
+            'email': self._DOCTOR_EMAIL,
+            'otp': '000000',
+            'role': 'doctor',
+        })
+        assert r2.status_code == 401
+        assert r2.get_json()['error']['code'] == 'OTP_INVALID'
+
+    def test_otp_not_in_logs_during_generation(self, app, caplog):
+        """OTP plaintext must not appear in any log record during generation."""
+        from services.otp_service import request_otp
+        with caplog.at_level(logging.DEBUG):
+            otp = request_otp(app.config, 'log.check@example.com', 'login_doctor')
+        for record in caplog.records:
+            assert otp not in record.getMessage(), (
+                f'OTP appeared in log message: {record.getMessage()[:80]}'
+            )

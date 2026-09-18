@@ -373,7 +373,15 @@ class HTTPSTransport:
             with _urllib_request.urlopen(req, timeout=30):
                 pass  # 2xx success — urlopen raises HTTPError for 4xx/5xx
         except _urllib_error.HTTPError as exc:
-            logger.error('Resend API HTTP error: status=%d', exc.code)
+            # Read up to 300 bytes of the response body for diagnostics.
+            # 422 responses include the validation error (e.g. "invalid from address").
+            _body = ''
+            try:
+                _body = exc.read().decode('utf-8', errors='replace')[:300]
+            except Exception:
+                pass
+            logger.error('Resend API HTTP error: status=%d from=%s body_prefix=%s',
+                         exc.code, _redact_username(self._from_email), _body)
             raise RuntimeError('EMAIL_DELIVERY_FAILED') from exc
 
     def _send_sendgrid(self, to: str, subject: str, body_text: str, body_html: str | None) -> None:
@@ -548,10 +556,12 @@ def init_transport(app) -> None:
 
     Transport selection:
       EMAIL_PROVIDER=smtp (default)
-        + EMAIL_API_KEY set  → FallbackTransport (SMTP primary, HTTPS on network failure)
-        + EMAIL_API_KEY unset → SMTPTransport only
-      EMAIL_PROVIDER=https   → HTTPSTransport only (no SMTP attempted)
-      TESTING=true           → CollectingTransport (no real mail)
+        + RESEND_API_KEY or EMAIL_API_KEY set  → FallbackTransport (SMTP primary, HTTPS fallback)
+        + no API key                           → SMTPTransport only
+      EMAIL_PROVIDER=https  → HTTPSTransport only (required on Render FREE — SMTP ports blocked)
+        API key resolution: RESEND_API_KEY takes priority; EMAIL_API_KEY as fallback
+        Sender: EMAIL_API_FROM if set, else SMTP_FROM_EMAIL (warn if not set — may fail Resend)
+      TESTING=true          → CollectingTransport (no real mail)
     """
     global _transport
     cfg = app.config
@@ -564,20 +574,31 @@ def init_transport(app) -> None:
     provider = (cfg.get('EMAIL_PROVIDER') or 'smtp').lower()
 
     if provider == 'https':
-        # Explicit HTTPS-only mode — SMTP is not attempted
+        # Explicit HTTPS-only mode — SMTP is not attempted.
+        # Required on Render FREE where all outbound SMTP ports are blocked.
         api_provider = (cfg.get('EMAIL_API_PROVIDER') or 'resend').lower()
-        api_key = cfg.get('EMAIL_API_KEY', '')
+        # RESEND_API_KEY takes priority; EMAIL_API_KEY accepted as backward-compat alias.
+        api_key = cfg.get('RESEND_API_KEY', '') or cfg.get('EMAIL_API_KEY', '')
         # EMAIL_API_FROM overrides the sender for HTTPS providers.
-        # Resend/SendGrid reject @gmail.com senders — set EMAIL_API_FROM to a verified
-        # sender domain (e.g. onboarding@resend.dev for Resend sandbox testing).
+        # Resend rejects @gmail.com senders (unverified domain).  Always set
+        # EMAIL_API_FROM to an address your Resend/SendGrid account can send from.
         smtp_from = cfg.get('SMTP_FROM_EMAIL', '')
         from_email = cfg.get('EMAIL_API_FROM', '').strip() or smtp_from
         from_name = cfg.get('SMTP_FROM_NAME', 'MediHawk')
         domain = cfg.get('EMAIL_API_DOMAIN', '')
         if not api_key:
-            logger.warning('Email: EMAIL_PROVIDER=https but EMAIL_API_KEY not set — email will fail')
+            logger.warning(
+                'Email: EMAIL_PROVIDER=https but neither RESEND_API_KEY nor EMAIL_API_KEY '
+                'is set — email delivery will fail'
+            )
             _transport = None
             return
+        if not cfg.get('EMAIL_API_FROM', '').strip():
+            logger.warning(
+                'Email: EMAIL_API_FROM not set — using SMTP_FROM_EMAIL (%s) as the HTTPS sender. '
+                'Resend rejects @gmail.com addresses; set EMAIL_API_FROM to a verified sender.',
+                _redact_username(smtp_from) if smtp_from else 'NOT_SET',
+            )
         _transport = HTTPSTransport(
             provider=api_provider,
             api_key=api_key,
@@ -586,7 +607,7 @@ def init_transport(app) -> None:
             domain=domain,
         )
         logger.info(
-            'Email: HTTPSTransport configured (HTTPS-only mode) | provider=%s from=%s api_key_set=yes',
+            'Email: HTTPSTransport configured (HTTPS-only) | provider=%s from=%s api_key_set=yes',
             api_provider, from_email or 'NOT_SET',
         )
         return
@@ -619,7 +640,7 @@ def init_transport(app) -> None:
     transport_mode = 'STARTTLS' if use_tls else 'SSL'
 
     # Check if HTTPS fallback is also configured
-    api_key = cfg.get('EMAIL_API_KEY', '')
+    api_key = cfg.get('RESEND_API_KEY', '') or cfg.get('EMAIL_API_KEY', '')
     if api_key:
         api_provider = (cfg.get('EMAIL_API_PROVIDER') or 'resend').lower()
         domain = cfg.get('EMAIL_API_DOMAIN', '')
