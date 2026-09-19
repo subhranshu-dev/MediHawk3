@@ -176,125 +176,125 @@ def _seed_demo_accounts(app: Flask) -> None:
 
     DEMO_PW = 'DEMO-INTERNAL-NOT-A-REAL-PASSWORD-DO-NOT-USE'
 
-    with app.app_context():
-        # ── Hub location ──────────────────────────────────────────────────────
-        if not _db.session.get(Location, 'hub-demo-01'):
-            _db.session.add(Location(
-                id='hub-demo-01',
-                name='MediHawk Demo Hub — Bhubaneswar',
-                type='hub',
-                district='Khordha',
-                lat=20.2961,
-                lng=85.8245,
-                contact='1800-MH-DEMO',
-                address='Janpath, Bhubaneswar, Odisha — Demo Hub',
-                is_active=True,
-            ))
-            logger.info('Demo hub location seeded')
+    # Called from within create_app's `with app.app_context()` — no nested context needed.
+    # ── Hub location ──────────────────────────────────────────────────────
+    if not _db.session.get(Location, 'hub-demo-01'):
+        _db.session.add(Location(
+            id='hub-demo-01',
+            name='MediHawk Demo Hub — Bhubaneswar',
+            type='hub',
+            district='Khordha',
+            lat=20.2961,
+            lng=85.8245,
+            contact='1800-MH-DEMO',
+            address='Janpath, Bhubaneswar, Odisha — Demo Hub',
+            is_active=True,
+        ))
+        logger.info('Demo hub location seeded')
 
-        # ── PHC location ──────────────────────────────────────────────────────
-        if not _db.session.get(Location, 'phc-demo-01'):
-            _db.session.add(Location(
-                id='phc-demo-01',
-                name='Demo PHC — Chandaka',
-                type='phc',
-                district='Khordha',
-                lat=20.3559,
-                lng=85.7712,
-                contact='0674-DEMO-PHC',
-                address='Chandaka Industrial Area, Bhubaneswar, Odisha — Demo PHC',
-                is_active=True,
-            ))
-            logger.info('Demo PHC location seeded')
+    # ── PHC location ──────────────────────────────────────────────────────
+    if not _db.session.get(Location, 'phc-demo-01'):
+        _db.session.add(Location(
+            id='phc-demo-01',
+            name='Demo PHC — Chandaka',
+            type='phc',
+            district='Khordha',
+            lat=20.3559,
+            lng=85.7712,
+            contact='0674-DEMO-PHC',
+            address='Chandaka Industrial Area, Bhubaneswar, Odisha — Demo PHC',
+            is_active=True,
+        ))
+        logger.info('Demo PHC location seeded')
 
-        _db.session.flush()  # ensure locations exist before FK references below
+    _db.session.flush()  # ensure locations exist before FK references below
 
-        # ── Inventory items ───────────────────────────────────────────────────
-        demo_items = [
-            dict(id='inv-demo-001', medicine='Paracetamol 500mg', quantity=200,
-                 unit='tablets', temperature_required='<25°C', status='in_stock',
-                 category='Analgesics', min_threshold=20,
-                 expiry_date='2027-12-31'),
-            dict(id='inv-demo-002', medicine='ORS Sachets', quantity=150,
-                 unit='sachets', temperature_required='<30°C', status='in_stock',
-                 category='Electrolytes', min_threshold=15,
-                 expiry_date='2027-06-30'),
-            dict(id='inv-demo-003', medicine='Amoxicillin 250mg', quantity=100,
-                 unit='capsules', temperature_required='<25°C', status='in_stock',
-                 category='Antibiotics', min_threshold=10,
-                 expiry_date='2027-09-30'),
-            dict(id='inv-demo-004', medicine='Insulin (Regular) 10ml', quantity=30,
-                 unit='vials', temperature_required='2-8°C', status='in_stock',
-                 category='Hormones', min_threshold=5,
-                 expiry_date='2027-03-31'),
-            dict(id='inv-demo-005', medicine='Anti-Rabies Vaccine 1ml', quantity=20,
-                 unit='doses', temperature_required='2-8°C', status='in_stock',
-                 category='Vaccines', min_threshold=3,
-                 expiry_date='2027-01-31'),
-        ]
-        for item_data in demo_items:
-            if not _db.session.get(InventoryItem, item_data['id']):
-                _db.session.add(InventoryItem(**item_data))
-        logger.info('Demo inventory items seeded (idempotent)')
+    # ── Inventory items ───────────────────────────────────────────────────
+    demo_items = [
+        dict(id='inv-demo-001', medicine='Paracetamol 500mg', quantity=200,
+             unit='tablets', temperature_required='<25°C', status='in_stock',
+             category='Analgesics', min_threshold=20,
+             expiry_date='2027-12-31'),
+        dict(id='inv-demo-002', medicine='ORS Sachets', quantity=150,
+             unit='sachets', temperature_required='<30°C', status='in_stock',
+             category='Electrolytes', min_threshold=15,
+             expiry_date='2027-06-30'),
+        dict(id='inv-demo-003', medicine='Amoxicillin 250mg', quantity=100,
+             unit='capsules', temperature_required='<25°C', status='in_stock',
+             category='Antibiotics', min_threshold=10,
+             expiry_date='2027-09-30'),
+        dict(id='inv-demo-004', medicine='Insulin (Regular) 10ml', quantity=30,
+             unit='vials', temperature_required='2-8°C', status='in_stock',
+             category='Hormones', min_threshold=5,
+             expiry_date='2027-03-31'),
+        dict(id='inv-demo-005', medicine='Anti-Rabies Vaccine 1ml', quantity=20,
+             unit='doses', temperature_required='2-8°C', status='in_stock',
+             category='Vaccines', min_threshold=3,
+             expiry_date='2027-01-31'),
+    ]
+    for item_data in demo_items:
+        if not _db.session.get(InventoryItem, item_data['id']):
+            _db.session.add(InventoryItem(**item_data))
+    logger.info('Demo inventory items seeded (idempotent)')
 
-        # ── Drone ─────────────────────────────────────────────────────────────
-        if not _db.session.get(Drone, 'MH-D01'):
-            _db.session.add(Drone(
-                id='MH-D01',
-                name='Hawk Alpha',
-                status='available',
-                lat=20.2961,
-                lng=85.8245,
-                altitude=0.0,
-                speed=0.0,
-                battery=100.0,
-                temperature=5.8,
-                gps_accuracy=1.5,
-                connection='stable',
-                link_type='4G',
-                health_motors='ok',
-                health_sensors='ok',
-                health_propellers='ok',
-                health_payload_lock='ok',
-                total_missions=0,
-                flight_hours=0.0,
-            ))
-            logger.info('Demo drone MH-D01 seeded')
+    # ── Drone ─────────────────────────────────────────────────────────────
+    if not _db.session.get(Drone, 'MH-D01'):
+        _db.session.add(Drone(
+            id='MH-D01',
+            name='Hawk Alpha',
+            status='available',
+            lat=20.2961,
+            lng=85.8245,
+            altitude=0.0,
+            speed=0.0,
+            battery=100.0,
+            temperature=5.8,
+            gps_accuracy=1.5,
+            connection='stable',
+            link_type='4G',
+            health_motors='ok',
+            health_sensors='ok',
+            health_propellers='ok',
+            health_payload_lock='ok',
+            total_missions=0,
+            flight_hours=0.0,
+        ))
+        logger.info('Demo drone MH-D01 seeded')
 
-        # ── Demo doctor account ───────────────────────────────────────────────
-        existing_doc = _db.session.get(Doctor, 'doc-demo-001')
-        if not existing_doc:
-            _db.session.add(Doctor(
-                id='doc-demo-001',
-                name='Demo Doctor',
-                email='demo.doctor@medihawk.local',
-                phone='0000000001',
-                password_hash=hash_password(DEMO_PW),
-                email_verified=True,
-                verification_status='verified',
-                is_active=True,
-                phc_id='phc-demo-01',
-            ))
-            logger.info('Demo doctor account seeded')
-        else:
-            # Ensure existing demo doctor has the demo PHC assigned
-            if existing_doc.phc_id is None:
-                existing_doc.phc_id = 'phc-demo-01'
-                logger.info('Demo doctor phc_id back-filled to phc-demo-01')
+    # ── Demo doctor account ───────────────────────────────────────────────
+    existing_doc = _db.session.get(Doctor, 'doc-demo-001')
+    if not existing_doc:
+        _db.session.add(Doctor(
+            id='doc-demo-001',
+            name='Demo Doctor',
+            email='demo.doctor@medihawk.local',
+            phone='0000000001',
+            password_hash=hash_password(DEMO_PW),
+            email_verified=True,
+            verification_status='verified',
+            is_active=True,
+            phc_id='phc-demo-01',
+        ))
+        logger.info('Demo doctor account seeded')
+    else:
+        # Ensure existing demo doctor has the demo PHC assigned
+        if existing_doc.phc_id is None:
+            existing_doc.phc_id = 'phc-demo-01'
+            logger.info('Demo doctor phc_id back-filled to phc-demo-01')
 
-        # ── Demo admin account ────────────────────────────────────────────────
-        if not _db.session.get(Admin, 'admin-demo-001'):
-            _db.session.add(Admin(
-                id='admin-demo-001',
-                name='Demo Admin',
-                email='demo.admin@medihawk.local',
-                password_hash=hash_password(DEMO_PW),
-                is_active=True,
-            ))
-            logger.info('Demo admin account seeded')
+    # ── Demo admin account ────────────────────────────────────────────────
+    if not _db.session.get(Admin, 'admin-demo-001'):
+        _db.session.add(Admin(
+            id='admin-demo-001',
+            name='Demo Admin',
+            email='demo.admin@medihawk.local',
+            password_hash=hash_password(DEMO_PW),
+            is_active=True,
+        ))
+        logger.info('Demo admin account seeded')
 
-        _db.session.commit()
-        logger.info('Demo data seed complete')
+    _db.session.commit()
+    logger.info('Demo data seed complete')
 
 
 def _register_blueprints(app: Flask) -> None:
