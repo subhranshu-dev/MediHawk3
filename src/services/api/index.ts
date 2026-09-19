@@ -211,6 +211,9 @@ export const authService = {
       method: 'POST',
       body: JSON.stringify({ role }),
     }),
+
+  publicConfig: (): Promise<{ demo_auth_enabled: boolean }> =>
+    request<{ demo_auth_enabled: boolean }>('/api/config/public'),
 }
 
 // ─── Orders ────────────────────────────────────────────────────────────────────

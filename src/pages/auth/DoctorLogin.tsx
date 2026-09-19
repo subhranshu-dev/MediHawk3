@@ -5,8 +5,6 @@ import {
   Phone, Mail, Lock, Eye, EyeOff, ArrowLeft,
   MessageSquare, ChevronRight, UserPlus, Zap,
 } from 'lucide-react'
-
-const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { useStore } from '@/store'
 import { useToast } from '@/components/ui/Toast'
@@ -118,6 +116,11 @@ export function DoctorLogin() {
   const { toast }       = useToast()
 
   const [view, setView] = useState<View>('login')
+  const [demoMode, setDemoMode] = useState(false)
+
+  useEffect(() => {
+    authService.publicConfig().then(r => setDemoMode(!!r.demo_auth_enabled)).catch(() => {})
+  }, [])
 
   // Login form
   const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone')
@@ -636,7 +639,7 @@ export function DoctorLogin() {
         <div className="panel p-8">
           <MediHawkLogo size="md" className="mb-6" />
 
-          {DEMO_MODE && (
+          {demoMode && (
             <div className="mb-5 px-3 py-2 rounded text-xs text-center font-medium"
               style={{ background: 'rgba(198,40,50,0.07)', border: '1px solid rgba(198,40,50,0.20)', color: '#c62832' }}>
               Prototype Demo Mode — SIH 2026
@@ -915,7 +918,7 @@ export function DoctorLogin() {
               >
                 <h2 className="text-xl font-bold text-text-primary mb-1">Reset Password</h2>
 
-                {DEMO_MODE ? (
+                {demoMode ? (
                   <div className="mb-6">
                     <p className="text-sm px-3 py-3 rounded"
                       style={{ color: '#c62832', background: 'rgba(198,40,50,0.07)', border: '1px solid rgba(198,40,50,0.20)' }}>
@@ -1271,7 +1274,7 @@ export function DoctorLogin() {
                   )}
                 </button>
 
-                {DEMO_MODE && (
+                {demoMode && (
                   <button type="button" onClick={handleDemoLogin} disabled={loading}
                     className="w-full text-sm mb-3 py-2.5 rounded font-medium transition-all flex items-center justify-center gap-1.5"
                     style={{ background: 'rgba(198,40,50,0.10)', border: '1px solid rgba(198,40,50,0.25)', color: '#c62832' }}>

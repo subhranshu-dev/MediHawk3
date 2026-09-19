@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, ChevronRight, Shield, UserPlus, Key, Zap } from 'lucide-react'
-
-const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { useStore } from '@/store'
 import { useToast } from '@/components/ui/Toast'
@@ -79,6 +77,11 @@ export function AdminLogin() {
   const { toast }   = useToast()
 
   const [view, setView] = useState<View>('login')
+  const [demoMode, setDemoMode] = useState(false)
+
+  useEffect(() => {
+    authService.publicConfig().then(r => setDemoMode(!!r.demo_auth_enabled)).catch(() => {})
+  }, [])
 
   // Login form
   const [email, setEmail]           = useState('')
@@ -448,7 +451,7 @@ export function AdminLogin() {
         <div className="panel p-8">
           <MediHawkLogo size="md" className="mb-6" />
 
-          {DEMO_MODE && (
+          {demoMode && (
             <div className="mb-5 px-3 py-2 rounded text-xs text-center font-medium"
               style={{ background: 'rgba(198,40,50,0.07)', border: '1px solid rgba(198,40,50,0.20)', color: '#c62832' }}>
               Prototype Demo Mode — SIH 2026
@@ -592,7 +595,7 @@ export function AdminLogin() {
                   </button>
                 </form>
 
-                {DEMO_MODE && (
+                {demoMode && (
                   <>
                     <div className="flex items-center gap-3 my-4">
                       <div className="flex-1 h-px" style={{ background: 'rgba(23,35,43,0.10)' }} />
@@ -818,7 +821,7 @@ export function AdminLogin() {
               >
                 <h2 className="text-xl font-bold text-text-primary mb-1">Reset your password</h2>
 
-                {DEMO_MODE ? (
+                {demoMode ? (
                   <div className="mb-5">
                     <p className="text-sm px-3 py-3 rounded"
                       style={{ color: '#c62832', background: 'rgba(198,40,50,0.07)', border: '1px solid rgba(198,40,50,0.20)' }}>
