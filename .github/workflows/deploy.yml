@@ -87,11 +87,13 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Vite production build
-        run: npm run build
         env:
           # VITE_API_BASE_URL is required by vite.config.ts in production mode.
           # If the secret is unset, default to the production Render backend URL.
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://medihawk3.onrender.com' }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: |
+          VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://medihawk3.onrender.com}"
+          npm run build
 
   # ── 3. Deploy backend to Render ───────────────────────────────────────────────
   deploy-backend:
