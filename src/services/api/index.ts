@@ -238,6 +238,9 @@ export const orderService = {
 
   cancel: (id: string): Promise<{ success: boolean; order: Record<string, unknown> }> =>
     request(`/api/cancel/${id}`, { method: 'POST' }),
+
+  launch: (id: string): Promise<{ success: boolean; mission: Record<string, unknown>; order: Record<string, unknown> }> =>
+    request(`/api/admin/orders/${id}/launch`, { method: 'POST' }),
 }
 
 // ─── Inventory ─────────────────────────────────────────────────────────────────

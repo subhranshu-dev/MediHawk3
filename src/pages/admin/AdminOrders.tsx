@@ -140,8 +140,7 @@ function InspectionModal({ order, onClose, onLaunch, onCancel }: {
   const handleAuthorize = async () => {
     setStep('authorizing')
     try {
-      // Integration-ready: POST /api/mission/launch { orderId: order.id }
-      await new Promise(r => setTimeout(r, 1400))
+      await orderService.launch(order.id)
       onLaunch()
     } catch {
       setErrorMsg('Command Center unavailable. Mission command could not be sent.')
@@ -651,16 +650,10 @@ export function AdminOrders() {
     return matchFilter && matchSearch
   })
 
-  const handleLaunch = async (order: Order) => {
-    try {
-      await orderService.confirm(order.id)
-      updateOrderStatus(order.id, 'approved')
-      setInspecting(null)
-      toast('success', `Order confirmed: ${order.id}`, `${order.medicine} approved for dispatch`)
-    } catch (err) {
-      const e = err as { message?: string }
-      toast('error', 'Confirm failed', e.message ?? 'Could not confirm order')
-    }
+  const handleLaunch = (order: Order) => {
+    updateOrderStatus(order.id, 'approved')
+    setInspecting(null)
+    toast('success', `Mission launched: ${order.id}`, `${order.medicine} dispatched for delivery`)
   }
 
   const handleCancel = async (order: Order) => {

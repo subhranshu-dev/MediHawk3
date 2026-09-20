@@ -134,7 +134,7 @@ export function MissionMap({ height = 400, className, followDrone = true }: Miss
 
   // Memoised so the reference is stable between 100ms smooth-pos renders
   const activeDrones = useMemo(
-    () => drones.filter((d) => d.status === 'in_flight' || d.status === 'returning'),
+    () => drones.filter((d) => ['preparing', 'in_flight', 'returning'].includes(d.status)),
     [drones],
   )
 

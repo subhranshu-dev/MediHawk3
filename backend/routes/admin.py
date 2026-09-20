@@ -21,10 +21,13 @@ Endpoints:
     POST /api/admin/drone/<drone_id>/resume
     GET  /api/admin/priority-queue
     GET  /api/admin/command-center
+    POST /api/admin/orders/<order_id>/launch
 """
 from __future__ import annotations
 
 import logging
+import math
+import uuid
 from datetime import datetime, timezone
 
 from flask import Blueprint, g, request
@@ -515,6 +518,119 @@ def admin_locations():
     from models.location import Location
     locs = Location.query.filter_by(is_active=True).order_by(Location.type, Location.name).all()
     return ok({'locations': [l.to_dict() for l in locs]})
+
+
+# ── POST /api/admin/orders/<order_id>/launch ─────────────────────────────────
+
+@admin_bp.route('/api/admin/orders/<order_id>/launch', methods=['POST'])
+@require_admin
+def launch_mission_route(order_id: str):
+    """
+    Admin launches a mission for a pending or approved order.
+    Creates a Mission row, assigns an available drone, and seeds the first
+    simulation tick.  All state is committed to PostgreSQL so every Gunicorn
+    worker sees consistent state immediately.
+    """
+    order = db.session.get(Order, order_id)
+    if order is None:
+        return error('ORDER_NOT_FOUND', f'Order {order_id} not found.', 404)
+
+    if order.status not in ('pending', 'approved'):
+        return error(
+            'INVALID_ORDER_STATUS',
+            f'Order must be pending or approved to launch (current: {order.status!r}).',
+            409,
+        )
+
+    # Guard against duplicate active missions for the same order
+    existing = Mission.query.filter_by(order_id=order_id).filter(
+        Mission.status.in_(('preparing', 'in_flight', 'landing'))
+    ).first()
+    if existing:
+        return error('MISSION_ALREADY_ACTIVE', 'An active mission already exists for this order.', 409)
+
+    # Find the first available drone
+    drone = Drone.query.filter_by(status='available').first()
+    if drone is None:
+        return error('NO_DRONE_AVAILABLE', 'No drones are currently available for dispatch.', 503)
+
+    # Origin: MediHawk Central Hub (hub-01)
+    from_lat: float = 20.2961
+    from_lng: float = 85.8189
+
+    # Destination: coordinates captured at order creation time
+    to_lat = order.dest_lat
+    to_lng = order.dest_lng
+
+    if not to_lat or not to_lng:
+        from models.location import Location
+        dest_loc = (
+            db.session.get(Location, order.destination_location)
+            if order.destination_location else None
+        )
+        if dest_loc:
+            to_lat = dest_loc.lat
+            to_lng = dest_loc.lng
+
+    if not to_lat or not to_lng:
+        return error('DESTINATION_UNKNOWN', 'Order has no destination coordinates.', 422)
+
+    # Haversine distance and ETA (15 m/s cruise ≈ 0.9 km/min)
+    def _hav(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+        r = 6371.0
+        dlat = math.radians(lat2 - lat1)
+        dlng = math.radians(lng2 - lng1)
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
+            * math.sin(dlng / 2) ** 2
+        )
+        return 2 * r * math.asin(math.sqrt(a))
+
+    dist_km = _hav(from_lat, from_lng, to_lat, to_lng)
+    eta_minutes = max(5, int(dist_km / 0.9) + 2)
+
+    now = _utc_now()
+    mission_id = f'MSN-{now.strftime("%Y")}-{uuid.uuid4().hex[:6].upper()}'
+
+    mission = Mission(
+        id=mission_id,
+        order_id=order_id,
+        drone_id=drone.id,
+        from_lat=from_lat,
+        from_lng=from_lng,
+        to_lat=to_lat,
+        to_lng=to_lng,
+        distance_km=round(dist_km, 2),
+        eta_minutes=eta_minutes,
+        elapsed_minutes=0.0,
+        status='preparing',
+        medicine=order.medicine,
+        quantity=order.quantity,
+        priority=order.priority,
+        launched_at=now,
+    )
+    db.session.add(mission)
+
+    drone.status = 'in_flight'
+    drone.mission_id = mission_id
+    drone.lat = from_lat
+    drone.lng = from_lng
+    drone.altitude = 0.0
+    drone.speed = 0.0
+    drone.last_updated = now
+
+    order.status = 'approved'
+    order.drone_id = drone.id
+    order.launched_at = now
+    order.authorized_by = g.user_id
+
+    db.session.commit()
+
+    # Seed first telemetry tick — kicks the simulation into motion
+    _sim_advance()
+
+    return ok({'mission': mission.to_dict(), 'order': order.to_dict()})
 
 
 # ── GET /api/admin/analytics ──────────────────────────────────────────────────
