@@ -40,6 +40,17 @@ def _db_label(uri: str) -> str:
     return uri.split('://')[0] if '://' in uri else 'unknown'
 
 
+_CANONICAL_DRONES = [
+    {'id': 'MH-D01', 'name': 'Hawk Alpha', 'status': 'available',
+     'lat': 20.2961, 'lng': 85.8189, 'battery': 100.0, 'total_missions': 187, 'flight_hours': 312.0},
+    {'id': 'MH-D02', 'name': 'Hawk Beta', 'status': 'available',
+     'lat': 20.2961, 'lng': 85.8189, 'battery': 96.0, 'total_missions': 143, 'flight_hours': 241.0},
+    {'id': 'MH-D03', 'name': 'Hawk Gamma', 'status': 'available',
+     'lat': 20.2961, 'lng': 85.8189, 'battery': 88.0, 'total_missions': 98, 'flight_hours': 165.5},
+    {'id': 'MH-D04', 'name': 'Hawk Delta', 'status': 'maintenance',
+     'lat': 20.2961, 'lng': 85.8189, 'battery': 45.0, 'total_missions': 62, 'flight_hours': 103.0},
+]
+
 _CANONICAL_LOCATIONS = [
     {
         'id': 'hub-01',
@@ -101,6 +112,26 @@ def _init_locations(db) -> None:
     if inserted:
         db.session.commit()
         logger.info('Canonical locations seeded: %d inserted', inserted)
+
+
+def _init_drones(db) -> None:
+    """
+    Ensure the canonical simulation drone fleet exists in the database.
+    Idempotent: only inserts drones not already present; never downgrades
+    an in-use drone back to 'available' — the simulation lifecycle manages
+    status transitions once a drone is assigned.
+    Required infrastructure: the launch endpoint returns 503 with no drone rows.
+    """
+    from models.drone import Drone
+
+    inserted = 0
+    for drone_data in _CANONICAL_DRONES:
+        if db.session.get(Drone, drone_data['id']) is None:
+            db.session.add(Drone(**drone_data))
+            inserted += 1
+    if inserted:
+        db.session.commit()
+        logger.info('Canonical drone fleet seeded: %d inserted', inserted)
 
 
 def _init_inventory(db) -> None:
@@ -230,6 +261,7 @@ def create_app(env: str | None = None) -> Flask:
                 raise  # do not silently start with a broken schema
             _init_locations(db)
             _init_inventory(db)
+            _init_drones(db)
 
         if mode == 'live':
             logger.warning(
