@@ -441,3 +441,133 @@ class TestInitLocations:
 
         hub = db.session.get(Location, 'hub-01')
         assert hub.name == 'Custom Hub'  # not overwritten
+
+
+# ── Expanded facility dataset tests ──────────────────────────────────────────
+
+class TestExpandedFacilityDataset:
+    """Verify the expanded facility dataset added for the location picker."""
+
+    def test_expanded_facility_count_greater_than_four(self, app):
+        """_init_locations must insert more than the original 4 facilities."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        count = Location.query.count()
+        assert count > 4
+
+    def test_facility_count_at_least_fifteen(self, app):
+        """At least 15 real facilities must be present after init."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        count = Location.query.count()
+        assert count >= 15
+
+    def test_all_facilities_have_valid_coordinates(self, app):
+        """Every facility must have lat in [-90,90] and lng in [-180,180]; no 0,0."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        facilities = Location.query.all()
+        for f in facilities:
+            assert f.lat is not None, f'{f.id} missing lat'
+            assert f.lng is not None, f'{f.id} missing lng'
+            assert -90.0 <= f.lat <= 90.0, f'{f.id} lat out of range: {f.lat}'
+            assert -180.0 <= f.lng <= 180.0, f'{f.id} lng out of range: {f.lng}'
+            assert not (f.lat == 0.0 and f.lng == 0.0), f'{f.id} has 0,0 coordinates'
+
+    def test_no_duplicate_facility_ids(self, app):
+        """No two facilities share the same id."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        ids = [f.id for f in Location.query.all()]
+        assert len(ids) == len(set(ids)), 'Duplicate facility IDs detected'
+
+    def test_existing_four_facilities_still_present(self, app):
+        """Original 4 production facilities are preserved after dataset expansion."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        assert db.session.get(Location, 'hub-01') is not None
+        assert db.session.get(Location, 'phc-chandaka') is not None
+        assert db.session.get(Location, 'phc-jatani') is not None
+        assert db.session.get(Location, 'chc-bhubaneswar') is not None
+
+    def test_expanded_phc_count_greater_than_two(self, app):
+        """More than the original 2 PHC facilities must be present."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        count = Location.query.filter_by(type='phc').count()
+        assert count > 2
+
+    def test_expanded_chc_count_greater_than_one(self, app):
+        """More than the original 1 CHC facility must be present."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        count = Location.query.filter_by(type='chc').count()
+        assert count > 1
+
+    def test_get_locations_returns_expanded_list(self, app, client):
+        """GET /api/locations returns all active facilities from expanded dataset."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        resp = client.get('/api/locations')
+        assert resp.status_code == 200
+        locations = resp.get_json()['locations']
+        assert len(locations) >= 15
+
+    def test_get_locations_all_have_lat_lng(self, app, client):
+        """Every location returned by GET /api/locations includes lat and lng."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        resp = client.get('/api/locations')
+        for loc in resp.get_json()['locations']:
+            assert 'lat' in loc
+            assert 'lng' in loc
+            assert loc['lat'] is not None
+            assert loc['lng'] is not None
+
+    def test_expanded_facilities_resolve_nearest(self, app, client, auth_headers_doctor):
+        """Coordinates near a new facility resolve to a PHC or CHC."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        # Coordinates near PHC Baranga (20.4090, 85.8283) — Cuttack
+        resp = client.post('/api/location/resolve',
+                           json={'latitude': 20.409, 'longitude': 85.828},
+                           headers=auth_headers_doctor)
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body['success'] is True
+        assert body['nearest_facility']['type'] in ('phc', 'chc')
+
+    def test_inactive_new_facility_not_returned(self, app, client):
+        """An inactive expanded facility is excluded from GET /api/locations."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        # Mark one of the new facilities inactive
+        loc = db.session.get(Location, 'phc-arada')
+        if loc:
+            loc.is_active = False
+            db.session.commit()
+        resp = client.get('/api/locations')
+        ids = [l['id'] for l in resp.get_json()['locations']]
+        assert 'phc-arada' not in ids

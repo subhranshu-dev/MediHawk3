@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '@/store'
 import { useToast } from '@/components/ui/Toast'
-import { inventoryService, orderService, adaptBackendOrder } from '@/services/api'
+import { inventoryService, orderService, locationService, adaptBackendOrder } from '@/services/api'
 import type { OrderPriority } from '@/types'
 
 // ─── Catalog ─────────────────────────────────────────────────────────────────
@@ -172,6 +172,17 @@ export function DoctorOrder() {
   const [inventoryLoading, setInventoryLoading] = useState(true)
   const [submitError, setSubmitError] = useState('')
 
+  // ── Location state ────────────────────────────────────────────────────────
+  type LocationMode = 'current' | 'manual'
+  interface FacilityOption { id: string; name: string; type: string; district: string; lat: number; lng: number }
+  const [locationMode, setLocationMode] = useState<LocationMode | null>(null)
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'getting' | 'resolving' | 'ready' | 'error'>('idle')
+  const [locationError, setLocationError] = useState('')
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [resolvedFacility, setResolvedFacility] = useState<FacilityOption | null>(null)
+  const [facilities, setFacilities] = useState<FacilityOption[]>([])
+  const [selectedFacilityId, setSelectedFacilityId] = useState('')
+
   const { user, addOrder } = useStore()
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -193,6 +204,15 @@ export function DoctorOrder() {
       })
       .catch(() => {})
       .finally(() => setInventoryLoading(false))
+  }, [])
+
+  useEffect(() => {
+    locationService.list()
+      .then(data => {
+        const eligible = data.locations.filter(l => l.is_active && l.type !== 'hub')
+        setFacilities(eligible)
+      })
+      .catch(() => {})
   }, [])
 
   // Derived
@@ -229,6 +249,42 @@ export function DoctorOrder() {
     setCustomItemName('')
   }
 
+  const handleUseCurrentLocation = async () => {
+    setLocationMode('current')
+    setLocationStatus('getting')
+    setLocationError('')
+    setResolvedFacility(null)
+    setGpsCoords(null)
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        })
+      })
+      const lat = pos.coords.latitude
+      const lng = pos.coords.longitude
+      setGpsCoords({ lat, lng })
+      setLocationStatus('resolving')
+      const result = await locationService.resolve({ latitude: lat, longitude: lng })
+      const nf = result.nearest_facility
+      setResolvedFacility({ id: nf.id, name: nf.name, type: nf.type, district: '', lat: nf.latitude, lng: nf.longitude })
+      setLocationStatus('ready')
+    } catch (err) {
+      const code = (err as GeolocationPositionError).code
+      if (code === 1) {
+        setLocationError('Location permission was denied. You can select a facility manually.')
+      } else if (code === 2 || code === 3) {
+        setLocationError('Current location is unavailable. Please select a facility manually.')
+      } else {
+        setLocationError('Could not resolve nearest facility. Please select a facility manually.')
+      }
+      setLocationMode(null)
+      setLocationStatus('error')
+    }
+  }
+
   const selectedCountFor = (catName: string) => cartEntries.filter(e => e.category === catName).length
 
   const maxQtyFor = (item: CatalogItem) => item.maxQty
@@ -245,26 +301,23 @@ export function DoctorOrder() {
       return
     }
 
-    // Real GPS — no fallback, no mock coordinates
+    // Use pre-selected delivery location — coordinates come from device GPS or manual facility
     let latitude: number
     let longitude: number
-    try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        })
-      })
-      latitude = pos.coords.latitude
-      longitude = pos.coords.longitude
-    } catch (gpsErr) {
-      const e = gpsErr as GeolocationPositionError
-      setSubmitError(
-        e.code === 1
-          ? 'Location permission denied. Please allow location access in your browser settings to submit an order.'
-          : 'Unable to determine your location. Ensure GPS / location services are enabled.'
-      )
+    if (locationMode === 'current' && gpsCoords) {
+      latitude = gpsCoords.lat
+      longitude = gpsCoords.lng
+    } else if (locationMode === 'manual' && selectedFacilityId) {
+      const fac = facilities.find(f => f.id === selectedFacilityId)
+      if (!fac) {
+        setSubmitError('Selected facility is no longer available. Please re-select a delivery location.')
+        setSubmitting(false)
+        return
+      }
+      latitude = fac.lat
+      longitude = fac.lng
+    } else {
+      setSubmitError('Please select a delivery location before submitting the order.')
       setSubmitting(false)
       return
     }
@@ -654,12 +707,94 @@ export function DoctorOrder() {
             {/* Delivery location */}
             <div>
               <label className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: '#7A939E' }}>Delivery Location</label>
-              <div className="flex items-center gap-2 mt-2 px-4 py-2.5 rounded-[10px]"
-                style={{ background: 'rgba(240,245,248,0.90)', border: '1px solid rgba(50,70,78,0.12)' }}>
-                <MapPin size={14} style={{ color: '#7A939E' }} />
-                <span className="text-sm text-text-primary flex-1">PHC Chandaka</span>
-                <span className="text-[10px] text-text-muted">Auto-filled</span>
+
+              {/* Option A — Use Current Location */}
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                disabled={locationStatus === 'getting' || locationStatus === 'resolving'}
+                className="mt-2 w-full flex items-center gap-2 px-4 py-2.5 rounded-[10px] transition-colors text-sm font-semibold"
+                style={{
+                  background: locationMode === 'current' && locationStatus === 'ready'
+                    ? 'rgba(26,126,85,0.08)' : 'rgba(240,245,248,0.90)',
+                  border: `1px solid ${locationMode === 'current' && locationStatus === 'ready'
+                    ? 'rgba(26,126,85,0.35)' : 'rgba(50,70,78,0.12)'}`,
+                  color: '#3A5060',
+                }}
+              >
+                <NavIcon size={14} style={{
+                  color: locationMode === 'current' && locationStatus === 'ready' ? '#1A7E55' : '#7A939E',
+                  flexShrink: 0,
+                }} />
+                <span className="flex-1 text-left">
+                  {locationStatus === 'getting' && 'Getting your current location…'}
+                  {locationStatus === 'resolving' && 'Finding nearest medical facility…'}
+                  {locationMode === 'current' && locationStatus === 'ready' && resolvedFacility
+                    ? `${resolvedFacility.name}`
+                    : locationStatus !== 'getting' && locationStatus !== 'resolving'
+                    ? 'Use Current Location'
+                    : null}
+                </span>
+                {locationMode === 'current' && locationStatus === 'ready' && (
+                  <span className="text-[10px] font-normal" style={{ color: '#1A7E55' }}>GPS</span>
+                )}
+              </button>
+
+              {/* Divider */}
+              <div className="flex items-center gap-2 my-2">
+                <div className="flex-1 h-px" style={{ background: 'rgba(50,70,78,0.10)' }} />
+                <span className="text-[10px] text-text-muted">or</span>
+                <div className="flex-1 h-px" style={{ background: 'rgba(50,70,78,0.10)' }} />
               </div>
+
+              {/* Option B — Manual facility dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedFacilityId}
+                  onChange={e => {
+                    setSelectedFacilityId(e.target.value)
+                    if (e.target.value) {
+                      setLocationMode('manual')
+                      setLocationStatus('ready')
+                      setLocationError('')
+                    } else {
+                      setLocationMode(null)
+                      setLocationStatus('idle')
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 rounded-[10px] text-sm text-text-primary outline-none appearance-none transition-colors pr-8"
+                  style={{
+                    background: locationMode === 'manual' && selectedFacilityId
+                      ? 'rgba(240,245,248,0.90)' : 'rgba(240,245,248,0.90)',
+                    border: `1px solid ${locationMode === 'manual' && selectedFacilityId
+                      ? 'rgba(50,70,78,0.28)' : 'rgba(50,70,78,0.12)'}`,
+                    color: selectedFacilityId ? undefined : '#7A939E',
+                  }}
+                >
+                  <option value="">Select Medical Facility…</option>
+                  {facilities.map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} — {f.type.toUpperCase()}{f.district ? ` · ${f.district}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#7A939E' }} />
+              </div>
+
+              {/* Location status messages */}
+              {locationError && (
+                <p className="mt-1.5 text-xs" style={{ color: '#C47010' }}>{locationError}</p>
+              )}
+              {locationMode === 'current' && locationStatus === 'ready' && resolvedFacility && (
+                <p className="mt-1.5 text-[10px]" style={{ color: '#1A7E55' }}>
+                  Using your device location · Nearest facility resolved
+                </p>
+              )}
+              {locationMode === 'manual' && selectedFacilityId && (
+                <p className="mt-1.5 text-[10px]" style={{ color: '#3A5060' }}>
+                  Manual selection
+                </p>
+              )}
             </div>
 
             {/* Patient Age */}
@@ -706,7 +841,17 @@ export function DoctorOrder() {
               </div>
             )}
 
-            <button onClick={() => setStep('confirm')} className="btn-primary w-full mt-1">
+            <button
+              onClick={() => {
+                if (!locationMode || locationStatus !== 'ready') {
+                  setLocationError('Please select a delivery location before continuing.')
+                  return
+                }
+                setLocationError('')
+                setStep('confirm')
+              }}
+              className="btn-primary w-full mt-1"
+            >
               Review Order <ArrowRight size={15} />
             </button>
           </motion.div>
@@ -748,8 +893,16 @@ export function DoctorOrder() {
                 { label: 'Total units', value: `${totalUnits} units` },
                 { label: 'Priority', value: priority.charAt(0).toUpperCase() + priority.slice(1) },
                 { label: 'From', value: 'MediHawk Central Hub' },
-                { label: 'To', value: 'PHC Chandaka' },
-                { label: 'Est. Delivery', value: '11–14 minutes' },
+                {
+                  label: 'To',
+                  value: locationMode === 'current'
+                    ? (resolvedFacility?.name ?? 'Resolved via GPS')
+                    : (facilities.find(f => f.id === selectedFacilityId)?.name ?? selectedFacilityId),
+                },
+                {
+                  label: 'Location',
+                  value: locationMode === 'current' ? 'GPS — device location' : 'Manual selection',
+                },
               ].map(row => (
                 <div key={row.label} className="flex items-center justify-between py-1.5 border-b last:border-0"
                   style={{ borderColor: 'rgba(50,70,78,0.08)' }}>

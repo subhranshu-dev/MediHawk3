@@ -296,7 +296,7 @@ interface LocationResolveResponse {
 export const locationService = {
   resolve: (payload: LocationResolvePayload): Promise<LocationResolveResponse> =>
     request('/api/location/resolve', { method: 'POST', body: JSON.stringify(payload) }),
-  list: (): Promise<{ locations: { id: string; name: string; type: string; district: string }[] }> =>
+  list: (): Promise<{ locations: { id: string; name: string; type: string; district: string; lat: number; lng: number; is_active: boolean }[] }> =>
     request('/api/locations'),
 }
 
