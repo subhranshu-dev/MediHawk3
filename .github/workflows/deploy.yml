@@ -106,8 +106,14 @@ jobs:
 
     steps:
       - name: Trigger Render deploy hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL || vars.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+          if [ -z "${RENDER_DEPLOY_HOOK_URL}" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_URL is not set in secrets/vars; skipping backend deploy hook trigger."
+            exit 0
+          fi
+          curl -fsS -X POST "${RENDER_DEPLOY_HOOK_URL}" \
             --retry 3 --retry-delay 5
         # RENDER_DEPLOY_HOOK_URL: Render dashboard → Service → Settings → Deploy Hook
         # The hook URL already encodes the service ID + deploy key — no extra auth needed.
