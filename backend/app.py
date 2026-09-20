@@ -103,6 +103,27 @@ def _init_locations(db) -> None:
         logger.info('Canonical locations seeded: %d inserted', inserted)
 
 
+def _init_inventory(db) -> None:
+    """
+    Ensure the canonical medicine catalog exists in the database.
+    Idempotent: only inserts rows not already present; existing records are
+    never modified or deleted.  No credentials or user data are inserted.
+    The catalog is required infrastructure — DoctorOrder page shows nothing
+    without inventory rows.
+    """
+    from models.inventory import InventoryItem
+    from seed import _INVENTORY
+
+    inserted = 0
+    for item_data in _INVENTORY:
+        if db.session.get(InventoryItem, item_data['id']) is None:
+            db.session.add(InventoryItem(**item_data))
+            inserted += 1
+    if inserted:
+        db.session.commit()
+        logger.info('Canonical inventory seeded: %d items inserted', inserted)
+
+
 def _validate_production_secrets(app: Flask) -> None:
     """Raise RuntimeError if any required production secret is missing."""
     missing = []
@@ -208,6 +229,7 @@ def create_app(env: str | None = None) -> Flask:
                 logger.error('Schema migration failed: %s', _mig_exc)
                 raise  # do not silently start with a broken schema
             _init_locations(db)
+            _init_inventory(db)
 
         if mode == 'live':
             logger.warning(

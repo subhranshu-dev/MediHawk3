@@ -297,3 +297,67 @@ class TestInventoryAPI:
                             json={'quantity': 10},
                             headers=auth_headers_admin)
         assert resp.status_code == 404
+
+
+# ── _init_inventory idempotency tests ────────────────────────────────────────
+
+class TestInitInventory:
+
+    def test_inserts_all_catalog_items(self, app):
+        """_init_inventory inserts the full 55-item canonical catalog."""
+        from app import _init_inventory
+        from extensions import db
+        from models.inventory import InventoryItem
+        from seed import _INVENTORY
+
+        _init_inventory(db)
+        db.session.expire_all()
+
+        count = InventoryItem.query.count()
+        assert count == len(_INVENTORY)
+
+    def test_all_expected_categories_present(self, app):
+        """After _init_inventory, all 5 required categories have items."""
+        from app import _init_inventory
+        from extensions import db
+        from models.inventory import InventoryItem
+
+        _init_inventory(db)
+        categories = {i.category for i in InventoryItem.query.all()}
+        # At least these must be present
+        assert any('Emergency' in c for c in categories)
+        assert any('Maternal' in c for c in categories)
+        assert any('Vaccine' in c for c in categories)
+        assert any('Blood' in c for c in categories)
+        assert any('General' in c for c in categories)
+
+    def test_idempotent_when_called_twice(self, app):
+        """Calling _init_inventory twice does not raise or insert duplicates."""
+        from app import _init_inventory
+        from extensions import db
+        from models.inventory import InventoryItem
+        from seed import _INVENTORY
+
+        _init_inventory(db)
+        _init_inventory(db)
+
+        count = InventoryItem.query.count()
+        assert count == len(_INVENTORY)
+
+    def test_does_not_overwrite_existing_item(self, app):
+        """An existing inventory item with the same id is not replaced."""
+        from app import _init_inventory
+        from extensions import db
+        from models.inventory import InventoryItem
+
+        existing = InventoryItem(id='inv-001', medicine='Custom Medicine',
+                                 quantity=999, unit='units', category='Emergency Medicine',
+                                 is_active=True)
+        db.session.add(existing)
+        db.session.commit()
+
+        _init_inventory(db)
+
+        item = db.session.get(InventoryItem, 'inv-001')
+        assert item.medicine == 'Custom Medicine'
+        assert item.quantity == 999
