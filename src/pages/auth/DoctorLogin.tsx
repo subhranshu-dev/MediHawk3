@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Phone, Mail, Lock, Eye, EyeOff, ArrowLeft,
-  MessageSquare, ChevronRight, UserPlus, Zap,
+  MessageSquare, ChevronRight, UserPlus,
 } from 'lucide-react'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { useStore } from '@/store'
@@ -116,11 +116,6 @@ export function DoctorLogin() {
   const { toast }       = useToast()
 
   const [view, setView] = useState<View>('login')
-  const [demoMode, setDemoMode] = useState(false)
-
-  useEffect(() => {
-    authService.publicConfig().then(r => setDemoMode(!!r.demo_auth_enabled)).catch(() => {})
-  }, [])
 
   // Login form
   const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone')
@@ -262,24 +257,6 @@ export function DoctorLogin() {
       } else {
         setFormError('Unable to sign in. Check your credentials and try again.')
       }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  /* ── Demo login ────────────────────────────────────────── */
-  const handleDemoLogin = async () => {
-    setLoading(true)
-    setFormError('')
-    try {
-      const res = await authService.demoLogin('doctor')
-      saveToken(res.token)
-      loginUser({ id: res.user.id, name: res.user.name, email: res.user.email, role: 'doctor' })
-      toast('success', `Welcome, ${res.user.name}`, 'Demo access granted')
-      navigate('/doctor')
-    } catch (err: unknown) {
-      const e = err as { message?: string }
-      setFormError(e.message ?? 'Demo login failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -639,13 +616,6 @@ export function DoctorLogin() {
         <div className="panel p-8">
           <MediHawkLogo size="md" className="mb-6" />
 
-          {demoMode && (
-            <div className="mb-5 px-3 py-2 rounded text-xs text-center font-medium"
-              style={{ background: 'rgba(198,40,50,0.07)', border: '1px solid rgba(198,40,50,0.20)', color: '#c62832' }}>
-              Prototype Demo Mode — SIH 2026
-            </div>
-          )}
-
           <AnimatePresence mode="wait">
 
             {/* ══════════════════ OTP VIEW (login) ══════════════════ */}
@@ -917,23 +887,10 @@ export function DoctorLogin() {
                 transition={{ duration: 0.20 }}
               >
                 <h2 className="text-xl font-bold text-text-primary mb-1">Reset Password</h2>
+                <p className="text-sm text-text-secondary mb-6">
+                  Enter your registered phone number or email to receive a reset code.
+                </p>
 
-                {demoMode ? (
-                  <div className="mb-6">
-                    <p className="text-sm px-3 py-3 rounded"
-                      style={{ color: '#c62832', background: 'rgba(198,40,50,0.07)', border: '1px solid rgba(198,40,50,0.20)' }}>
-                      Demo mode: password recovery is unavailable in prototype mode. Use Demo Access.
-                    </p>
-                    <button type="button" onClick={() => setView('login')}
-                      className="mt-3 text-xs text-text-muted hover:text-text-secondary transition-colors">
-                      ← Back to sign in
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-text-secondary mb-6">
-                      Enter your registered phone number or email to receive a reset code.
-                    </p>
                 <form onSubmit={handleFpRequest} className="flex flex-col gap-4" noValidate>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs text-text-secondary font-medium" htmlFor="fp-contact">
@@ -960,8 +917,6 @@ export function DoctorLogin() {
                       : 'Send Reset Code'}
                   </button>
                 </form>
-                  </>
-                )}
               </motion.div>
             )}
 
@@ -1273,15 +1228,6 @@ export function DoctorLogin() {
                     </span>
                   )}
                 </button>
-
-                {demoMode && (
-                  <button type="button" onClick={handleDemoLogin} disabled={loading}
-                    className="w-full text-sm mb-3 py-2.5 rounded font-medium transition-all flex items-center justify-center gap-1.5"
-                    style={{ background: 'rgba(198,40,50,0.10)', border: '1px solid rgba(198,40,50,0.25)', color: '#c62832' }}>
-                    <Zap size={14} />
-                    Demo Access — Doctor Portal
-                  </button>
-                )}
 
                 {/* Sign up link */}
                 <div className="text-center">

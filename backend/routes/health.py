@@ -41,7 +41,7 @@ def health_check():
         'status': overall,
         'mode': mode,
         'database': db_status,
-        'version': '1.0.0-demo-seed',
+        'version': '1.0.0-phase1a',
     }), 200 if overall == 'healthy' else 503
 
 

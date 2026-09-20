@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, ChevronRight, Shield, UserPlus, Key, Zap } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, ChevronRight, Shield, UserPlus, Key } from 'lucide-react'
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { useStore } from '@/store'
 import { useToast } from '@/components/ui/Toast'
@@ -77,11 +77,6 @@ export function AdminLogin() {
   const { toast }   = useToast()
 
   const [view, setView] = useState<View>('login')
-  const [demoMode, setDemoMode] = useState(false)
-
-  useEffect(() => {
-    authService.publicConfig().then(r => setDemoMode(!!r.demo_auth_enabled)).catch(() => {})
-  }, [])
 
   // Login form
   const [email, setEmail]           = useState('')
@@ -154,24 +149,6 @@ export function AdminLogin() {
     ref.current = setInterval(() => {
       setter(t => { if (t <= 1) { clearInterval(ref.current!); return 0 } return t - 1 })
     }, 1000)
-  }
-
-  /* ── Demo login ────────────────────────────────────────── */
-  const handleDemoLogin = async () => {
-    setLoading(true)
-    setFormError('')
-    try {
-      const res = await authService.demoLogin('admin')
-      saveToken(res.token)
-      loginUser({ id: res.user.id, name: res.user.name, email: res.user.email, role: 'admin' })
-      toast('success', 'Demo Access · Command Center', 'Demo administrator authenticated')
-      navigate('/admin')
-    } catch (err: unknown) {
-      const e = err as { message?: string }
-      setFormError(e.message ?? 'Demo login failed. Please try again.')
-    } finally {
-      setLoading(false)
-    }
   }
 
   /* ── Login ─────────────────────────────────────────────── */
@@ -451,13 +428,6 @@ export function AdminLogin() {
         <div className="panel p-8">
           <MediHawkLogo size="md" className="mb-6" />
 
-          {demoMode && (
-            <div className="mb-5 px-3 py-2 rounded text-xs text-center font-medium"
-              style={{ background: 'rgba(198,40,50,0.07)', border: '1px solid rgba(198,40,50,0.20)', color: '#c62832' }}>
-              Prototype Demo Mode — SIH 2026
-            </div>
-          )}
-
           <AnimatePresence mode="wait">
 
             {/* ══════════════════ MAIN LOGIN ══════════════════ */}
@@ -594,22 +564,6 @@ export function AdminLogin() {
                     )}
                   </button>
                 </form>
-
-                {demoMode && (
-                  <>
-                    <div className="flex items-center gap-3 my-4">
-                      <div className="flex-1 h-px" style={{ background: 'rgba(23,35,43,0.10)' }} />
-                      <span className="text-2xs text-text-muted uppercase tracking-wider">or</span>
-                      <div className="flex-1 h-px" style={{ background: 'rgba(23,35,43,0.10)' }} />
-                    </div>
-                    <button type="button" onClick={handleDemoLogin} disabled={loading}
-                      className="w-full text-sm mb-3 py-2.5 rounded font-medium transition-all flex items-center justify-center gap-1.5"
-                      style={{ background: 'rgba(198,40,50,0.10)', border: '1px solid rgba(198,40,50,0.25)', color: '#c62832' }}>
-                      <Zap size={14} />
-                      Demo Access — Command Center
-                    </button>
-                  </>
-                )}
 
                 {/* Sign up + Doctor link */}
                 <div className="mt-5 flex flex-col gap-2 text-center">
@@ -820,23 +774,10 @@ export function AdminLogin() {
                 transition={{ duration: 0.20 }}
               >
                 <h2 className="text-xl font-bold text-text-primary mb-1">Reset your password</h2>
+                <p className="text-sm text-text-secondary mb-5">
+                  Enter your registered administrator email address.
+                </p>
 
-                {demoMode ? (
-                  <div className="mb-5">
-                    <p className="text-sm px-3 py-3 rounded"
-                      style={{ color: '#c62832', background: 'rgba(198,40,50,0.07)', border: '1px solid rgba(198,40,50,0.20)' }}>
-                      Demo mode: password recovery is unavailable in prototype mode. Use Demo Access.
-                    </p>
-                    <button type="button" onClick={() => setView('login')}
-                      className="mt-3 text-xs text-text-muted hover:text-text-secondary transition-colors">
-                      ← Back to sign in
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-text-secondary mb-5">
-                      Enter your registered administrator email address.
-                    </p>
                 <form onSubmit={handleFpSendOtp} className="flex flex-col gap-4" noValidate>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs text-text-secondary font-medium" htmlFor="fp-email-input">
@@ -867,8 +808,6 @@ export function AdminLogin() {
                       : 'Send OTP'}
                   </button>
                 </form>
-                  </>
-                )}
               </motion.div>
             )}
 
