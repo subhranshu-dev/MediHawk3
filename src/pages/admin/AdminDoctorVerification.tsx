@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { UserCheck, UserX, UserMinus, Key, RefreshCw, Plus, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 import { clsx } from 'clsx'
-import { adminService } from '@/services/api'
+import { adminService, locationService } from '@/services/api'
 import { useToast } from '@/components/ui/Toast'
 
 interface PendingDoctor {
@@ -30,6 +30,13 @@ interface Invitation {
   created_at: string | null
 }
 
+interface Facility {
+  id: string
+  name: string
+  type: string
+  district: string
+}
+
 type Tab = 'pending' | 'invitations'
 
 export function AdminDoctorVerification() {
@@ -47,6 +54,7 @@ export function AdminDoctorVerification() {
   const [creatingInv, setCreatingInv] = useState(false)
   const [newCode, setNewCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [facilities, setFacilities] = useState<Facility[]>([])
 
   const loadPending = useCallback(async () => {
     setLoading(true)
@@ -71,6 +79,12 @@ export function AdminDoctorVerification() {
       setLoading(false)
     }
   }, [toast])
+
+  useEffect(() => {
+    locationService.list()
+      .then(data => setFacilities(data.locations ?? []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (tab === 'pending') loadPending()
@@ -272,14 +286,30 @@ export function AdminDoctorVerification() {
               <p className="text-sm font-semibold text-text-primary">Create Invitation Code</p>
             </div>
             <div className="flex gap-2">
-              <input
-                type="text"
-                value={newFacilityId}
-                onChange={e => setNewFacilityId(e.target.value)}
-                placeholder="Facility ID (e.g. phc-chandaka)"
-                className="flex-1 px-3 py-2 text-xs rounded"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(220,235,242,0.85)', outline: 'none' }}
-              />
+              {facilities.length > 0 ? (
+                <select
+                  value={newFacilityId}
+                  onChange={e => setNewFacilityId(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs rounded"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(220,235,242,0.85)', outline: 'none' }}
+                >
+                  <option value="">— Select facility —</option>
+                  {facilities.map(f => (
+                    <option key={f.id} value={f.id} style={{ background: '#1a1f2e' }}>
+                      {f.name} ({f.type.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={newFacilityId}
+                  onChange={e => setNewFacilityId(e.target.value)}
+                  placeholder="Facility ID (e.g. phc-chandaka)"
+                  className="flex-1 px-3 py-2 text-xs rounded"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(220,235,242,0.85)', outline: 'none' }}
+                />
+              )}
               <button
                 onClick={handleCreateInvitation}
                 disabled={creatingInv || !newFacilityId.trim()}

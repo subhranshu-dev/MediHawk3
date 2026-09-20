@@ -1,12 +1,11 @@
 """
 Location resolution routes.
 
-POST /api/location/resolve
-    Given device GPS coordinates (from the browser/device), returns the nearest
-    eligible active PHC or CHC.
+GET  /api/locations          — public list of active facilities (for signup dropdowns)
+POST /api/location/resolve   — resolve GPS to nearest facility (requires JWT)
 
 Security contract:
-  - Requires a valid JWT (doctor or admin).
+  - POST /api/location/resolve requires a valid JWT (doctor or admin).
   - Coordinates must originate from the device; the backend never trusts
     a client-supplied facility ID as authoritative.
   - No mock or hardcoded fallback coordinates are ever used.
@@ -22,10 +21,24 @@ from flask import Blueprint, g, jsonify, request
 
 from middleware.auth import require_auth
 from services.geo_service import find_nearest_facility, validate_coordinates
-from utils.response import error
+from utils.response import error, ok
 
 location_bp = Blueprint('location', __name__)
 logger = logging.getLogger(__name__)
+
+
+@location_bp.route('/api/locations', methods=['GET'])
+def list_locations():
+    """
+    Public endpoint: list all active PHC/CHC/hub facilities.
+    Used by the doctor signup form to populate the facility dropdown.
+    No authentication required — this is reference data needed before signup.
+    """
+    from extensions import db
+    from models.location import Location
+
+    locs = Location.query.filter_by(is_active=True).order_by(Location.type, Location.name).all()
+    return ok({'locations': [loc.to_dict() for loc in locs]})
 
 _LOCATION_ERROR_MAP: dict[str, tuple[str, str, int]] = {
     'permission_denied': (

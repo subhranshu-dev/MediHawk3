@@ -339,3 +339,105 @@ class TestLocationResolveAPI:
         assert body['location']['longitude'] == pytest.approx(device_lon)
         # Confirm the nearest_facility coords differ from the device location
         assert body['nearest_facility']['latitude'] != pytest.approx(device_lat)
+
+
+# ── Public GET /api/locations endpoint tests ─────────────────────────────────
+
+class TestPublicLocationsEndpoint:
+
+    def test_empty_db_returns_empty_list(self, app, client):
+        """No auth required; empty DB returns empty locations list."""
+        resp = client.get('/api/locations')
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body['success'] is True
+        assert body['locations'] == []
+
+    def test_returns_active_locations(self, app, client):
+        """Active locations are returned."""
+        loc = Location(id='phc-test', name='Test PHC', type='phc',
+                       lat=20.35, lng=85.76, is_active=True)
+        from extensions import db
+        db.session.add(loc)
+        db.session.commit()
+
+        resp = client.get('/api/locations')
+        assert resp.status_code == 200
+        ids = [l['id'] for l in resp.get_json()['locations']]
+        assert 'phc-test' in ids
+
+    def test_inactive_locations_excluded(self, app, client):
+        """Inactive locations are NOT returned."""
+        from extensions import db
+        db.session.add(Location(id='phc-active', name='Active PHC', type='phc',
+                                lat=20.35, lng=85.76, is_active=True))
+        db.session.add(Location(id='phc-inactive', name='Inactive PHC', type='phc',
+                                lat=20.36, lng=85.77, is_active=False))
+        db.session.commit()
+
+        resp = client.get('/api/locations')
+        assert resp.status_code == 200
+        ids = [l['id'] for l in resp.get_json()['locations']]
+        assert 'phc-active' in ids
+        assert 'phc-inactive' not in ids
+
+    def test_no_authentication_required(self, seeded_app, client):
+        """Endpoint is public — no Authorization header needed."""
+        resp = client.get('/api/locations')
+        assert resp.status_code == 200
+        assert len(resp.get_json()['locations']) > 0
+
+    def test_response_has_required_fields(self, seeded_app, client):
+        """Each location includes id, name, type, district."""
+        resp = client.get('/api/locations')
+        assert resp.status_code == 200
+        for loc in resp.get_json()['locations']:
+            assert 'id' in loc
+            assert 'name' in loc
+            assert 'type' in loc
+
+
+# ── _init_locations idempotency tests ─────────────────────────────────────────
+
+class TestInitLocations:
+
+    def test_inserts_canonical_locations(self, app):
+        """_init_locations inserts all 4 canonical locations."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        db.session.expire_all()
+
+        assert db.session.get(Location, 'hub-01') is not None
+        assert db.session.get(Location, 'phc-chandaka') is not None
+        assert db.session.get(Location, 'phc-jatani') is not None
+        assert db.session.get(Location, 'chc-bhubaneswar') is not None
+
+    def test_idempotent_when_called_twice(self, app):
+        """Calling _init_locations twice does not raise or duplicate rows."""
+        from app import _init_locations
+        from extensions import db
+
+        _init_locations(db)
+        _init_locations(db)  # second call must not raise or insert duplicates
+
+        count = Location.query.filter(
+            Location.id.in_(['hub-01', 'phc-chandaka', 'phc-jatani', 'chc-bhubaneswar'])
+        ).count()
+        assert count == 4
+
+    def test_does_not_overwrite_existing_location(self, app):
+        """Existing location with same id is not replaced."""
+        from app import _init_locations
+        from extensions import db
+
+        existing = Location(id='hub-01', name='Custom Hub', type='hub',
+                            lat=0.0, lng=0.0)
+        db.session.add(existing)
+        db.session.commit()
+
+        _init_locations(db)
+
+        hub = db.session.get(Location, 'hub-01')
+        assert hub.name == 'Custom Hub'  # not overwritten

@@ -8,7 +8,7 @@ import {
 import { MediHawkLogo } from '@/components/ui/MediHawkLogo'
 import { useStore } from '@/store'
 import { useToast } from '@/components/ui/Toast'
-import { authService, saveToken } from '@/services/api'
+import { authService, locationService, saveToken } from '@/services/api'
 
 /* ── helpers ──────────────────────────────────────────────────── */
 const BASE_INPUT: React.CSSProperties = {
@@ -160,6 +160,9 @@ export function DoctorLogin() {
   const [sgPhcIdErr, setSgPhcIdErr]   = useState('')
   const [sgInvCodeErr, setSgInvCodeErr] = useState('')
 
+  // Facility list for signup dropdown
+  const [sgFacilities, setSgFacilities] = useState<{ id: string; name: string; type: string }[]>([])
+
   // Email verification (after signup)
   const [veEmail, setVeEmail]   = useState('')
   const [veCells, setVeCells]   = useState(['', '', '', '', '', ''])
@@ -194,6 +197,12 @@ export function DoctorLogin() {
   const [fpConfPwErr, setFpConfPwErr] = useState('')
   const [fpResetting, setFpResetting] = useState(false)
   const [fpResetErr, setFpResetErr]   = useState('')
+
+  useEffect(() => {
+    locationService.list()
+      .then(data => setSgFacilities(data.locations ?? []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -789,21 +798,38 @@ export function DoctorLogin() {
                     {sgMedRegErr && <p className="text-xs" style={{ color: '#c62832' }}>{sgMedRegErr}</p>}
                   </div>
 
-                  {/* PHC/CHC Facility ID */}
+                  {/* PHC/CHC Facility */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs text-text-secondary font-medium" htmlFor="sg-phc">Facility ID (PHC/CHC)</label>
-                    <input
-                      id="sg-phc"
-                      type="text"
-                      value={sgPhcId}
-                      onChange={e => { setSgPhcId(e.target.value); setSgPhcIdErr('') }}
-                      className={`${iClass} px-3`}
-                      style={{ ...BASE_INPUT, ...(sgPhcIdErr ? { borderColor: 'rgba(198,40,50,0.60)' } : {}) }}
-                      placeholder="e.g. phc-chandaka"
-                      autoComplete="off"
-                      onFocus={e => applyFocus(e.target as HTMLInputElement)}
-                      onBlur={e  => applyBlur(e.target as HTMLInputElement)}
-                    />
+                    <label className="text-xs text-text-secondary font-medium" htmlFor="sg-phc">Facility (PHC/CHC)</label>
+                    {sgFacilities.length > 0 ? (
+                      <select
+                        id="sg-phc"
+                        value={sgPhcId}
+                        onChange={e => { setSgPhcId(e.target.value); setSgPhcIdErr('') }}
+                        className={`${iClass} px-3`}
+                        style={{ ...BASE_INPUT, ...(sgPhcIdErr ? { borderColor: 'rgba(198,40,50,0.60)' } : {}) }}
+                      >
+                        <option value="">— Select your facility —</option>
+                        {sgFacilities.map(f => (
+                          <option key={f.id} value={f.id}>
+                            {f.name} ({f.type.toUpperCase()})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id="sg-phc"
+                        type="text"
+                        value={sgPhcId}
+                        onChange={e => { setSgPhcId(e.target.value); setSgPhcIdErr('') }}
+                        className={`${iClass} px-3`}
+                        style={{ ...BASE_INPUT, ...(sgPhcIdErr ? { borderColor: 'rgba(198,40,50,0.60)' } : {}) }}
+                        placeholder="e.g. phc-chandaka"
+                        autoComplete="off"
+                        onFocus={e => applyFocus(e.target as HTMLInputElement)}
+                        onBlur={e  => applyBlur(e.target as HTMLInputElement)}
+                      />
+                    )}
                     {sgPhcIdErr && <p className="text-xs" style={{ color: '#c62832' }}>{sgPhcIdErr}</p>}
                   </div>
 

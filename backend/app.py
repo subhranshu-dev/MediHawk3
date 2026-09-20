@@ -40,6 +40,69 @@ def _db_label(uri: str) -> str:
     return uri.split('://')[0] if '://' in uri else 'unknown'
 
 
+_CANONICAL_LOCATIONS = [
+    {
+        'id': 'hub-01',
+        'name': 'MediHawk Central Hub',
+        'type': 'hub',
+        'district': 'Bhubaneswar',
+        'lat': 20.2961,
+        'lng': 85.8189,
+        'contact': '+91-674-2300000',
+        'address': 'Rasulgarh, Bhubaneswar, Odisha 751010',
+    },
+    {
+        'id': 'phc-chandaka',
+        'name': 'PHC Chandaka',
+        'type': 'phc',
+        'district': 'Khordha',
+        'lat': 20.3512,
+        'lng': 85.7612,
+        'contact': '+91-674-2300001',
+        'address': 'Chandaka, Bhubaneswar, Odisha 751024',
+    },
+    {
+        'id': 'phc-jatani',
+        'name': 'PHC Jatani',
+        'type': 'phc',
+        'district': 'Khordha',
+        'lat': 20.1682,
+        'lng': 85.8141,
+        'contact': '+91-674-2300002',
+        'address': 'Jatani, Odisha 752050',
+    },
+    {
+        'id': 'chc-bhubaneswar',
+        'name': 'CHC Bhubaneswar South',
+        'type': 'chc',
+        'district': 'Khordha',
+        'lat': 20.2513,
+        'lng': 85.8388,
+        'contact': '+91-674-2300003',
+        'address': 'Bhubaneswar South, Odisha 751001',
+    },
+]
+
+
+def _init_locations(db) -> None:
+    """
+    Ensure the canonical Odisha facility locations exist in the database.
+    Idempotent: only inserts rows not already present.
+    Locations are required infrastructure — invitations and doctor registration
+    fail without them.  No credentials or user data are inserted.
+    """
+    from models.location import Location
+
+    inserted = 0
+    for loc_data in _CANONICAL_LOCATIONS:
+        if db.session.get(Location, loc_data['id']) is None:
+            db.session.add(Location(**loc_data))
+            inserted += 1
+    if inserted:
+        db.session.commit()
+        logger.info('Canonical locations seeded: %d inserted', inserted)
+
+
 def _validate_production_secrets(app: Flask) -> None:
     """Raise RuntimeError if any required production secret is missing."""
     missing = []
@@ -144,6 +207,7 @@ def create_app(env: str | None = None) -> Flask:
             except Exception as _mig_exc:
                 logger.error('Schema migration failed: %s', _mig_exc)
                 raise  # do not silently start with a broken schema
+            _init_locations(db)
 
         if mode == 'live':
             logger.warning(

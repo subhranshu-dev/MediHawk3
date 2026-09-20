@@ -293,6 +293,8 @@ interface LocationResolveResponse {
 export const locationService = {
   resolve: (payload: LocationResolvePayload): Promise<LocationResolveResponse> =>
     request('/api/location/resolve', { method: 'POST', body: JSON.stringify(payload) }),
+  list: (): Promise<{ locations: { id: string; name: string; type: string; district: string }[] }> =>
+    request('/api/locations'),
 }
 
 // ─── Drone (simulation only in Phase 1C) ───────────────────────────────────────
